@@ -1,10 +1,11 @@
 #![allow(non_snake_case)]
 
 use raw_gl_context::{GlConfig, GlContext};
-pub use winit::event_loop::{EventLoop, ControlFlow};
-use winit::window::{WindowBuilder, Window};
-use winit::dpi::LogicalSize;
 use std::marker::PhantomData;
+use winit::dpi::LogicalSize;
+pub use winit::event::Event;
+pub use winit::event_loop::{ControlFlow, EventLoop};
+use winit::window::{Window, WindowBuilder};
 pub mod gfx;
 
 pub struct GLWindow<T: 'static> {
@@ -13,9 +14,8 @@ pub struct GLWindow<T: 'static> {
     title: String,
     base_window: Window,
     context: GlContext,
-    phantom: PhantomData<T>
+    phantom: PhantomData<T>,
 }
-
 
 impl<T> GLWindow<T> {
     pub fn new(width: i32, height: i32, title: &str, event_loop: &EventLoop<T>) -> GLWindow<T> {
@@ -27,13 +27,14 @@ impl<T> GLWindow<T> {
             title: String::from(title),
             base_window: window,
             context,
-            phantom: PhantomData
+            phantom: PhantomData,
         }
     }
 
     pub fn init_gl(&self) {
         self.base_window.set_title(self.title.as_str());
-        self.base_window.set_inner_size(LogicalSize::new(self.width, self.height));
+        self.base_window
+            .set_inner_size(LogicalSize::new(self.width, self.height));
         self.context.make_current();
         gl::load_with(|symbol| self.context.get_proc_address(symbol) as *const _);
     }
@@ -41,7 +42,14 @@ impl<T> GLWindow<T> {
     pub fn clear(&self) {
         gfx::glClear(gl::COLOR_BUFFER_BIT);
     }
-    
+
+    pub fn render(&self, render_func: &dyn Fn()) {
+        self.context.make_current();
+        render_func();
+        self.context.swap_buffers();
+        self.context.make_not_current();
+    }
+
     pub fn redraw(&self) {
         self.context.make_current();
         gfx::glClearColor(1.0, 1.0, 1.0, 1.0);
