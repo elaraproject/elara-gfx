@@ -1,81 +1,52 @@
+#![allow(non_snake_case)]
+
 use raw_gl_context::{GlConfig, GlContext};
-
-use winit::event_loop::{ControlFlow, EventLoop};
+pub use winit::event_loop::{EventLoop, ControlFlow};
 use winit::window::{WindowBuilder, Window};
+use winit::dpi::LogicalSize;
+use std::marker::PhantomData;
+pub mod gfx;
 
-pub struct GLWindow {
+pub struct GLWindow<T: 'static> {
     width: i32,
     height: i32,
     title: String,
-    event_loop: EventLoop<T>,
     base_window: Window,
-    context: GlContext
+    context: GlContext,
+    phantom: PhantomData<T>
 }
 
 
-impl GLWindow {
-    pub fn new(width: i32, height: i32, title: &str) -> GLWindow {
-        // To prevent memory errors we have to make a dedicated cstring
-        // to pass to tigrWindow
-        let event_loop = EventLoop::new();
+impl<T> GLWindow<T> {
+    pub fn new(width: i32, height: i32, title: &str, event_loop: &EventLoop<T>) -> GLWindow<T> {
         let window = WindowBuilder::new().build(&event_loop).unwrap();
-        let context = unsafe { 
-        GlContext::create(&window, GlConfig::default()).unwrap()
-        };
+        let context = GlContext::create(&window, GlConfig::default()).unwrap();
         GLWindow {
-            width: width,
-            height: height,
+            width,
+            height,
             title: String::from(title),
-            event_loop: event_loop,
-            base_window: window
+            base_window: window,
+            context,
+            phantom: PhantomData
         }
     }
 
     pub fn init_gl(&self) {
-        unsafe {
-            self.context.make_current();
-        }
+        self.base_window.set_title(self.title.as_str());
+        self.base_window.set_inner_size(LogicalSize::new(self.width, self.height));
+        self.context.make_current();
         gl::load_with(|symbol| self.context.get_proc_address(symbol) as *const _);
     }
 
     pub fn clear(&self) {
-        unsafe {
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-        }
+        gfx::glClear(gl::COLOR_BUFFER_BIT);
     }
     
     pub fn redraw(&self) {
-        unsafe {
-            self.context.make_current();
-        }
-
-        unsafe {
-            gl::ClearColor(1.0, 0.0, 1.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-        }
-
+        self.context.make_current();
+        gfx::glClearColor(1.0, 1.0, 1.0, 1.0);
+        gfx::glClear(gl::COLOR_BUFFER_BIT);
         self.context.swap_buffers();
-
-        unsafe {
-            self.context.make_not_current();
-        }
-    }
-    pub fn handle_events(&self) {
-        self.event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
-
-        match event {
-            winit::event::Event::WindowEvent {
-                event: winit::event::WindowEvent::CloseRequested,
-                ..
-            } => {
-                *control_flow = ControlFlow::Exit;
-            }
-            winit::event::Event::RedrawRequested(_) => {
-                self.redraw();
-            }
-            _ => {}
-        }
-    });
+        self.context.make_not_current();
     }
 }

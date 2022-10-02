@@ -1,9 +1,9 @@
-mod effi;
-use gl;
+// use effi;
+pub use gl;
 // Re-export gl types so they can directly be
 // used from the crate itself
 pub use gl::types::*;
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 
 // OpenGL abstractions here
 // Wrappers around OpenGL functions
@@ -122,14 +122,17 @@ pub fn glVertexAttribPointer(
     size: i32,
     ptr_type: GLenum,
     normalized: bool,
+    stride: GLsizei,
     ptr: i32,
 ) {
     unsafe {
+        // gl::VertexAttribPointer(attrib as u32, size, ptr_type, normalized as u8, /* i32 */, ptr as *const GLvoid)
         gl::VertexAttribPointer(
             attrib as u32,
             size,
             ptr_type,
             normalized as u8,
+            stride,
             ptr as *const GLvoid,
         )
     }
