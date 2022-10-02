@@ -160,9 +160,17 @@ name = "elara_gfx"
 version = "0.1.0"
 dependencies = [
  "effi",
+ "elara_log",
  "gl",
  "raw-gl-context",
  "winit",
+]
+
+[[package]]
+name = "elara_log"
+version = "0.1.0"
+dependencies = [
+ "effi",
 ]
 
 [[package]]

@@ -3,7 +3,7 @@ pub use gl;
 // Re-export gl types so they can directly be
 // used from the crate itself
 pub use gl::types::*;
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 
 // OpenGL abstractions here
 // Wrappers around OpenGL functions
@@ -64,12 +64,7 @@ pub fn glShaderSource(shader: u32, count: i32, shader_src: &str, len: i32) {
     unsafe {
         let shader_cstr = CString::new(shader_src).unwrap();
         let mut shader_cstr_ptr = shader_cstr.as_ptr() as *const i8;
-        gl::ShaderSource(
-            shader,
-            count,
-            &mut shader_cstr_ptr,
-            len as *mut i32,
-        )
+        gl::ShaderSource(shader, count, &mut shader_cstr_ptr, len as *mut i32)
     }
 }
 
