@@ -1,0 +1,11 @@
+[package]
+name = "elara_gfx"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+raw-gl-context = "0.1.2"
+gl = "0.14.0"
+winit = { version = "0.27.3", default-features = false, features = ["x11"] }
