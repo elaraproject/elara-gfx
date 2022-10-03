@@ -50,10 +50,9 @@ impl<T> GLWindow<T> {
         self.context.make_not_current();
     }
 
-    pub fn redraw(&self) {
+    pub fn redraw(&self, redraw_func: &dyn Fn()) {
         self.context.make_current();
-        gfx::glClearColor(1.0, 1.0, 1.0, 1.0);
-        gfx::glClear(gl::COLOR_BUFFER_BIT);
+        redraw_func();
         self.context.swap_buffers();
         self.context.make_not_current();
     }
