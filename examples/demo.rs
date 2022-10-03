@@ -2,9 +2,6 @@ use elara_gfx::gfx::*;
 use elara_gfx::{Event, EventLoop, GLWindow};
 use elara_log::Logger;
 
-// const VERT_SHADER_SRC: &str = include_str!("shaders/triangle.vert");
-// const FRAG_SHADER_SRC: &str = include_str!("shaders/triangle.frag");
-
 fn main() {
     let mut log = Logger::new();
     let event_loop = EventLoop::new();
