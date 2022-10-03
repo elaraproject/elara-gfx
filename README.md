@@ -6,6 +6,12 @@ A GPU programming library for Project Elara, focused on functionality and speed.
 
 ## Install
 
+Make sure to clone the repository and grab submodules:
+
+```
+git clone --recursive https://github.com/elaraproject/elara-gfx.git
+```
+
 On macOS and Windows (untested), Elara GFX should compile without any need to download additional libraries. On many Linux distributions, this is also the case, but if Elara GFX does not compile out of the box, follow these instructions.
 
 ### Debian-based Linux
