@@ -1,3 +1,4 @@
+// Original source: https://www.shadertoy.com/view/XdlSDs
 #version 330
 
 uniform float u_time;
