@@ -5,17 +5,12 @@ use elara_log::Logger;
 fn main() {
     let mut log = Logger::new();
     let event_loop = EventLoop::new();
-    let window = GLWindow::new(900, 600, "Window 1", &event_loop);
+    let window = GLWindow::new(900, 600, "Window 1", true, &event_loop);
     window.init_gl();
-    println!("OpenGL Renderer: {}", glGetString(gl::RENDERER));
-    println!("OpenGL Version: {}", glGetString(gl::VERSION));
-    println!(
-        "GLSL Version: {}",
-        glGetString(gl::SHADING_LANGUAGE_VERSION)
-    );
+    gfxinfo();
+    log.info("Starting rendering...");
     // Event handling
     event_loop.run(move |event, _, control_flow| {
-        control_flow.set_wait(); //set_poll() in actual case
 
         match event {
             Event::WindowEvent {
@@ -27,9 +22,12 @@ fn main() {
             }
             Event::MainEventsCleared => {
                 // Render function
+                window.make_current();
+                window.clear(0.1, 0.1, 0.1, 1.0);
+                window.swap_buffers();
+                window.make_not_current();
             }
             Event::RedrawRequested(_) => {
-                window.redraw();
             }
             _ => {}
         }
