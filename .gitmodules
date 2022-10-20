@@ -1,3 +1,6 @@
 [submodule "src/effi"]
 	path = src/effi
 	url = https://github.com/elaraproject/effi
+[submodule "src/elara-log"]
+	path = src/elara-log
+	url = https://github.com/elaraproject/elara-log
