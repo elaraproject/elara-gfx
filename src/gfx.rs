@@ -4,8 +4,7 @@ use effi::*;
 use std::fs::File;
 use std::path::PathBuf;
 use std::io::Write;
-use std::{error::Error, ptr::null};
-use std::any::Any;
+use std::error::Error;
 // Re-export gl types so they can directly be
 // used from the crate itself
 pub use gl::types::*;
