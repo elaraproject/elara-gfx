@@ -8,3 +8,4 @@ This is a likely very incomplete list of all the sources that helped in making `
 - Examples from <https://open.gl/>
 - Examples from <https://github.com/afaber999/rust_learn_opengl_glow/>
 - [GLSL Sandbox](https://glslsandbox.com/)
+- `Speedy2D` and its developers <https://github.com/QuantumBadger/Speedy2D>
