@@ -1,35 +1,29 @@
-use elara_gfx::gfx::*;
-use elara_gfx::{Event, EventLoop, GLWindow};
-use elara_log::Logger;
+use elara_gfx::gl_info;
+use elara_gfx::{GLWindow, WindowHandler};
+use elara_log::prelude::*;
+use std::error::Error;
 
-fn main() {
-    let mut log = Logger::new();
-    let event_loop = EventLoop::new();
-    let window = GLWindow::new(900, 600, "Window 1", true, &event_loop);
-    window.init_gl();
-    gfxinfo();
-    log.info("Starting rendering...");
-    // Event handling
-    event_loop.run(move |event, _, control_flow| {
+struct Handler;
 
-        match event {
-            Event::WindowEvent {
-                event: winit::event::WindowEvent::CloseRequested,
-                ..
-            } => {
-                log.info("Close request received, exiting...");
-                control_flow.set_exit();
-            }
-            Event::MainEventsCleared => {
-                // Render function
-                window.make_current();
-                window.clear(0.1, 0.1, 0.1, 1.0);
-                window.swap_buffers();
-                window.make_not_current();
-            }
-            Event::RedrawRequested(_) => {
-            }
-            _ => {}
+impl WindowHandler for Handler {
+    fn on_draw(&self) {
+        // All drawing code should be put here
+        unsafe {
+            gl::ClearColor(0.1, 0.1, 0.1, 1.0);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
         }
-    });
+    }
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    Logger::new().init().unwrap();
+    info!("Starting logging...");
+
+    let (app, window) = GLWindow::new_with_title("Hi OpenGL!")?;
+    window.get_context()?;
+    gl_info();
+
+    // Event handling
+    app.run_loop(window, &Handler);
+    Ok(())
 }
