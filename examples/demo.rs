@@ -6,7 +6,7 @@ use std::error::Error;
 struct Handler;
 
 impl WindowHandler for Handler {
-    fn on_draw(&self) {
+    fn on_draw(&mut self) {
         // All drawing code should be put here
         unsafe {
             gl::ClearColor(0.1, 0.1, 0.1, 1.0);
@@ -24,6 +24,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     gl_info();
 
     // Event handling
-    app.run_loop(window, &Handler);
+    app.run_loop(window, Handler);
     Ok(())
 }

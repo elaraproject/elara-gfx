@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
 pub use gl;
-use gl::types::*;
 use raw_gl_context::{GlConfig, GlContext};
 use std::ffi::CStr;
 use winit::dpi::PhysicalSize;
@@ -10,16 +9,15 @@ pub use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
 // pub mod gfx;
 mod error;
-mod types;
+pub mod types;
 use error::*;
+use elara_log::prelude::*;
 
-// TODO: use elara-log here instead once double-initialization
-// problem is fixed
-macro_rules! log {
-    ($($arg:tt)+) => (println!("[elara-gfx] {}", (format!($($arg)+))));
-}
+// NOTE: elara-gfx uses elara-log internally to log
+// errors, if elara-log is not initialized
+// library errors will not show up!
 
-pub fn gl_get_string(gl_str: GLenum) -> Option<&'static str> {
+pub fn gl_get_string(gl_str: types::GLenum) -> Option<&'static str> {
     unsafe {
         let s = gl::GetString(gl_str);
         (!s.is_null()).then(|| CStr::from_ptr(s.cast()).to_str().unwrap())
@@ -28,18 +26,21 @@ pub fn gl_get_string(gl_str: GLenum) -> Option<&'static str> {
 
 pub fn gl_info() {
     if let Some(renderer_str) = gl_get_string(gl::RENDERER) {
-        log!("OpenGL Renderer: {}", renderer_str);
+        info!("[elara-gfx] OpenGL Renderer: {}", renderer_str);
     }
     if let Some(version_str) = gl_get_string(gl::VERSION) {
-        log!("OpenGL Version: {}", version_str);
+        info!("[elara-gfx] OpenGL Version: {}", version_str);
     }
     if let Some(glsl_version_str) = gl_get_string(gl::SHADING_LANGUAGE_VERSION) {
-        log!("GLSL Version: {}", glsl_version_str);
+        info!("[elara-gfx] GLSL Version: {}", glsl_version_str);
     }
 }
 
 pub trait WindowHandler {
-    fn on_draw(&self);
+    fn on_draw(&mut self) {}
+    fn on_resize(&mut self) {}
+    // TODO: add other methods such as on_mouse_move(), on_keydown(),
+    // on_click(), on_cursor_move() for handling on non-draw events
 }
 
 #[derive(Debug)]
@@ -54,20 +55,25 @@ impl GLWindowHandler {
         }
     }
 
-    pub fn run_loop(self, window: GLWindow, handler: &'static dyn WindowHandler) {
+    pub fn run_loop<H>(self, window: GLWindow, mut handler: H)
+    where
+        H: WindowHandler + 'static,
+    {
         self.event_loop.run(move |event, _, control_flow| {
             match event {
                 Event::WindowEvent {
                     event: winit::event::WindowEvent::CloseRequested,
                     ..
                 } => {
-                    log!("Close request received, exiting...");
+                    info!("[elara-gfx] Close request received, exiting...");
                     control_flow.set_exit();
                 }
                 Event::MainEventsCleared => {
                     // Render function
                     window.make_current();
-                    unsafe { gl::Viewport(0, 0, window.width(), window.height()); }
+                    unsafe {
+                        gl::Viewport(0, 0, window.width(), window.height());
+                    }
                     handler.on_draw();
                     window.swap_buffers();
                     window.make_not_current();
@@ -141,7 +147,7 @@ impl GLWindow {
         };
         Ok((window_handler, gl_window))
     }
-    
+
     pub fn new_with_title(title: &'static str) -> Result<(GLWindowHandler, GLWindow), WindowError> {
         let opts = WindowOptions {
             title,
@@ -160,11 +166,11 @@ impl GLWindow {
         self.is_visible = visibility;
         self.base_window.set_visible(visibility);
     }
-    
+
     pub fn width(&self) -> i32 {
         self.width
     }
-    
+
     pub fn height(&self) -> i32 {
         self.height
     }
