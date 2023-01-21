@@ -1,5 +1,5 @@
-use std::fs::read_to_string;
 use std::env;
+use std::fs::read_to_string;
 use std::time::Instant;
 
 // Takes almost any fragment shader as input and renders with the shader
@@ -26,22 +26,26 @@ fn main() -> GfxResult {
     let event_loop = EventLoop::new();
     let window = GLWindow::new(900, 600, "Window 1", true, &event_loop);
     window.init_gl();
-    log.info(format!("Window dimensions: {} x {}", window.width(), window.height()).as_str());
+    log.info(
+        format!(
+            "Window dimensions: {} x {}",
+            window.width(),
+            window.height()
+        )
+        .as_str(),
+    );
 
     // OpenGL info
     gfxinfo();
 
     let vertices = vec![
-        -1.0,  1.0, 1.0, 0.0, 0.0, // Top-left
-         1.0,  1.0, 0.0, 1.0, 0.0, // Top-right
-         1.0, -1.0, 0.0, 0.0, 1.0, // Bottom-right
-        -1.0, -1.0, 1.0, 1.0, 1.0  // Bottom-left 
+        -1.0, 1.0, 1.0, 0.0, 0.0, // Top-left
+        1.0, 1.0, 0.0, 1.0, 0.0, // Top-right
+        1.0, -1.0, 0.0, 0.0, 1.0, // Bottom-right
+        -1.0, -1.0, 1.0, 1.0, 1.0, // Bottom-left
     ];
 
-    let elements = vec![
-        0, 1, 2,
-        2, 3, 0
-    ];
+    let elements = vec![0, 1, 2, 2, 3, 0];
 
     let renderer = ElementRenderer::new(vertices, elements, get_dummy_vs(), &fs);
     renderer.attribute("position", 2, 5, null_ptr::<f32>());
@@ -51,7 +55,6 @@ fn main() -> GfxResult {
 
     // Event handling
     event_loop.run(move |event, _, control_flow| {
-
         match event {
             Event::WindowEvent {
                 event: winit::event::WindowEvent::CloseRequested,
@@ -63,7 +66,7 @@ fn main() -> GfxResult {
             Event::MainEventsCleared => {
                 // Render function
                 window.make_current();
-                let now =  std::time::Instant::now();
+                let now = std::time::Instant::now();
                 let elapsed_time = now.duration_since(start_time).as_secs_f32();
                 renderer.uniform_f32("u_time", &[elapsed_time]);
                 renderer.uniform_f32("u_resolution", &resolution);
@@ -71,10 +74,8 @@ fn main() -> GfxResult {
                 window.swap_buffers();
                 window.make_not_current();
             }
-            Event::RedrawRequested(_) => {
-            }
-            _ => {
-            }
+            Event::RedrawRequested(_) => {}
+            _ => {}
         }
     });
 }
