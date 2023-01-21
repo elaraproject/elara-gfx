@@ -1,7 +1,8 @@
-#version 330 core
-out vec4 Color;
-varying vec3 v_color;
+#version 150 core
 
-void main() {
-    Color = vec4(v_color, 1.0);
+out vec4 outColor;
+
+void main()
+{
+    outColor = vec4(1.0, 1.0, 1.0, 1.0);
 }

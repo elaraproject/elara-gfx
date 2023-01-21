@@ -1,9 +1,8 @@
-#version 330 core
-attribute vec2 position;
-attribute vec3 color;
+#version 150 core
 
-varying vec3 v_color;
-void main() {
+in vec2 position;
+
+void main()
+{
     gl_Position = vec4(position, 0.0, 1.0);
-    v_color = color;
 }
