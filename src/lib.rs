@@ -2,7 +2,7 @@
 
 pub use gl;
 use raw_gl_context::{GlConfig, GlContext};
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use winit::dpi::PhysicalSize;
 pub use winit::event::Event;
 pub use winit::event_loop::{ControlFlow, EventLoop};
@@ -10,8 +10,8 @@ use winit::window::{Window, WindowBuilder};
 // pub mod gfx;
 mod error;
 pub mod types;
-use error::*;
 use elara_log::prelude::*;
+use error::*;
 
 // NOTE: elara-gfx uses elara-log internally to log
 // errors, if elara-log is not initialized
@@ -22,6 +22,20 @@ pub fn gl_get_string(gl_str: types::GLenum) -> Option<&'static str> {
         let s = gl::GetString(gl_str);
         (!s.is_null()).then(|| CStr::from_ptr(s.cast()).to_str().unwrap())
     }
+}
+
+// Reference: https://github.com/jminer/clear-coat/blob/068f247ce84017583cc49a257d84e659137e6c4f/src/attributes.rs#L17
+pub fn to_cstr(s: &'static str) -> *const types::c_char {
+    if s.as_bytes().last() == Some(&0) && !s.as_bytes()[..s.len() - 1].contains(&b'\0') {
+        s.as_bytes().as_ptr() as *const types::c_char
+    } else {
+        let c_str = CString::new(s).unwrap();
+        c_str.as_ptr() as *const types::c_char
+    }
+}
+
+pub fn from_cstr(s: *const types::c_char) -> Option<&'static str> {
+    unsafe { (!s.is_null()).then(|| CStr::from_ptr(s.cast()).to_str().unwrap()) }
 }
 
 pub fn gl_info() {
@@ -71,9 +85,6 @@ impl GLWindowHandler {
                 Event::MainEventsCleared => {
                     // Render function
                     window.make_current();
-                    unsafe {
-                        gl::Viewport(0, 0, window.width(), window.height());
-                    }
                     handler.on_draw();
                     window.swap_buffers();
                     window.make_not_current();
