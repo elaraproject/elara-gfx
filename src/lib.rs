@@ -50,8 +50,13 @@ pub fn gl_info() {
     }
 }
 
+// Temporary: all WindowHandler errors use strings
+pub type HandlerResult<T> = Result<T, String>;
+
 pub trait WindowHandler {
-    fn on_draw(&mut self) {}
+    fn on_draw(&mut self) -> HandlerResult<()> {
+        Ok(())
+    }
     fn on_resize(&mut self) {}
     // TODO: add other methods such as on_mouse_move(), on_keydown(),
     // on_click(), on_cursor_move() for handling on non-draw events
@@ -230,4 +235,125 @@ impl GLWindow {
         self.context.swap_buffers();
         self.context.make_not_current();
     }
+}
+
+pub struct Shader {
+    id: types::GLuint,
+}
+
+impl Shader {
+    pub fn new(source: &str, shader_type: types::GLenum) -> Result<Shader, String> {
+        let id = create_shader(source, shader_type)?;
+        Ok(Shader { id })
+    }
+
+    pub fn id(&self) -> types::GLuint {
+        self.id
+    }
+}
+
+impl Drop for Shader {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteShader(self.id);
+        }
+    }
+}
+
+pub struct Program {
+    id: types::GLuint,
+}
+
+impl Program {
+    pub fn new(shaders: &[Shader]) -> Result<Program, String> {
+        let id = create_program(shaders)?;
+        Ok(Program { id })
+    }
+
+    pub fn use_program(&self) {
+        unsafe {
+            gl::UseProgram(self.id);
+        }
+    }
+
+    pub fn id(&self) -> types::GLuint {
+        self.id
+    }
+}
+
+impl Drop for Program {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteProgram(self.id);
+        }
+    }
+}
+
+fn create_shader(source: &str, shader_type: types::GLenum) -> Result<types::GLuint, String> {
+    let id = unsafe { gl::CreateShader(shader_type) };
+    unsafe {
+        gl::ShaderSource(
+            id,
+            1,
+            &source.as_bytes().as_ptr().cast(),
+            &source.len().try_into().unwrap(),
+        );
+        gl::CompileShader(id);
+
+        let mut success = 0;
+        gl::GetShaderiv(id, gl::COMPILE_STATUS, &mut success);
+
+        if success == 0 {
+            warn!("[elara-gfx] Shader compilation failed");
+            let mut log_len = 0_i32;
+            let mut error: Vec<u8> = Vec::with_capacity(gl::INFO_LOG_LENGTH as usize);
+            gl::GetShaderInfoLog(
+                id,
+                gl::INFO_LOG_LENGTH as i32,
+                &mut log_len,
+                error.as_mut_ptr().cast(),
+            );
+            error.set_len(log_len.try_into().unwrap());
+            let error_msg = String::from_utf8_lossy(&error);
+            return Err(format!("Shader compile error: {}", error_msg));
+        }
+        Ok(id)
+    }
+}
+
+fn create_program(shaders: &[Shader]) -> Result<types::GLuint, String> {
+    let id = unsafe { gl::CreateProgram() };
+    for shader in shaders {
+        unsafe { gl::AttachShader(id, shader.id()) }
+    }
+
+    unsafe {
+        gl::LinkProgram(id);
+    }
+
+    let mut success = 0;
+    unsafe {
+        gl::GetProgramiv(id, gl::LINK_STATUS, &mut success);
+
+        if success == 0 {
+            warn!("[elara-gfx] Program compilation failed");
+            let mut log_len = 0_i32;
+            let mut error: Vec<u8> = Vec::with_capacity(gl::INFO_LOG_LENGTH as usize);
+            gl::GetProgramInfoLog(
+                id,
+                gl::INFO_LOG_LENGTH as i32,
+                &mut log_len,
+                error.as_mut_ptr().cast(),
+            );
+            error.set_len(log_len.try_into().unwrap());
+            let error_msg = String::from_utf8_lossy(&error);
+            return Err(format!("Program compile error: {}", error_msg));
+        }
+
+        for shader in shaders {
+            gl::DetachShader(id, shader.id())
+        }
+    }
+
+    Ok(id)
 }
