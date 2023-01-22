@@ -40,7 +40,7 @@ fn show_render_stats(frame_interval: u32, current_frame: u32, frame_render_time:
     // Shows render stats once per <frame_interval> frames
     if current_frame % frame_interval == 0 {
         debug!(
-            "Frame {} rendered in {:?}",
+            "Frame {} average render time {:?}",
             current_frame, frame_render_time
         );
     }
