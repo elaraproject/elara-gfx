@@ -291,6 +291,18 @@ impl Drop for Program {
     }
 }
 
+pub fn create_vao() -> types::GLuint {
+    let mut vao = 0;
+    unsafe { gl::GenVertexArrays(1, &mut vao) };
+    vao
+}
+
+pub fn create_vbo() -> types::GLuint {
+    let mut vbo = 0;
+    unsafe { gl::GenBuffers(1, &mut vbo) };
+    vbo
+}
+
 fn create_shader(source: &str, shader_type: types::GLenum) -> Result<types::GLuint, String> {
     let id = unsafe { gl::CreateShader(shader_type) };
     unsafe {

@@ -1,5 +1,5 @@
 // Renders a triangle with `elara-gfx`
-use elara_gfx::{gl_info, Program, Shader};
+use elara_gfx::{gl_info, Program, Shader, create_vao, create_vbo};
 use elara_gfx::{types::*, GLWindow, HandlerResult, WindowHandler};
 use elara_log::prelude::*;
 use std::error::Error;
@@ -10,51 +10,23 @@ const FRAG_SHADER: &str = include_str!("shaders/triangle.frag");
 
 struct Handler {
     vao: GLuint,
-    vbo: GLuint,
-    program: GLuint,
     frame_count: u32,
     start_time: Instant,
-    dims: (i32, i32),
 }
 
 impl Handler {
-    fn new(win: &GLWindow) -> Handler {
-        let dims = (win.width(), win.height());
+    fn new(_win: &GLWindow) -> Result<Handler, String> {
         let start_time = Instant::now();
         let frame_count = 0;
-        Handler {
-            frame_count,
-            start_time,
-            dims,
-        }
-    }
-    fn current_frame(&self) -> u32 {
-        self.frame_count
-    }
-    fn add_frame(&mut self) {
-        self.frame_count += 1
-    }
-    fn get_elapsed_time(&self) -> Duration {
-        self.start_time.elapsed()
-    }
-}
 
-fn show_render_stats(frame_interval: u32, current_frame: u32, frame_render_time: Duration) {
-    // Shows render stats once per <frame_interval> frames
-    if current_frame % frame_interval == 0 {
-        debug!(
-            "Frame {} average render time {:?}",
-            current_frame, frame_render_time
-        );
-    }
-}
-
-impl WindowHandler for Handler {
-    fn on_draw(&mut self) -> HandlerResult<()> {
+        // Perform all onetime CPU operations
+        // once here to speed up rendering
+        let vao = create_vao();
+        let vbo = create_vbo();
         let vertex_shader = Shader::new(&VERT_SHADER, gl::VERTEX_SHADER)?;
         let fragment_shader = Shader::new(&FRAG_SHADER, gl::FRAGMENT_SHADER)?;
-        let shader_program = Program::new(&[vertex_shader, fragment_shader])?;
-        shader_program.use_program();
+        let program = Program::new(&[vertex_shader, fragment_shader])?;
+        program.use_program();
 
         #[rustfmt::skip]
         let vertices = [
@@ -62,12 +34,6 @@ impl WindowHandler for Handler {
             0.5, -0.5, 0.0,
             0.0, 0.5, 0.0
         ];
-
-        let mut vao = 0;
-        unsafe { gl::GenVertexArrays(1, &mut vao) };
-
-        let mut vbo = 0;
-        unsafe { gl::GenBuffers(1, &mut vbo) };
 
         unsafe {
             gl::BindVertexArray(vao);
@@ -94,15 +60,40 @@ impl WindowHandler for Handler {
             gl::BindVertexArray(0);
         }
 
-        // Actual rendering code
+        Ok(Handler {
+            vao,
+            frame_count,
+            start_time,
+        })
+    }
+    fn current_frame(&self) -> u32 {
+        self.frame_count
+    }
+    fn add_frame(&mut self) {
+        self.frame_count += 1
+    }
+    fn get_elapsed_time(&self) -> Duration {
+        self.start_time.elapsed()
+    }
+}
 
+fn show_render_stats(frame_interval: u32, current_frame: u32, frame_render_time: Duration) {
+    // Shows render stats once per <frame_interval> frames
+    if current_frame % frame_interval == 0 {
+        debug!(
+            "Frame {} average render time {:?}",
+            current_frame, frame_render_time
+        );
+    }
+}
+
+impl WindowHandler for Handler {
+    fn on_draw(&mut self) -> HandlerResult<()> {
         unsafe {
             gl::ClearColor(1.0, 1.0, 1.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
-            gl::BindVertexArray(vao);
-
+            gl::BindVertexArray(self.vao);
             gl::DrawArrays(gl::TRIANGLES, 0, 3);
-
             gl::BindVertexArray(0);
         }
         self.add_frame();
@@ -126,7 +117,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Run all OpenGL calls that only
     // needs to be run once in advance
     // of rendering to improve performance
-    let render_handler = Handler::new(&window);
+    let render_handler = Handler::new(&window)?;
 
     // Event handling
     app.run_loop(window, render_handler);
