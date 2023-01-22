@@ -90,12 +90,14 @@ impl GLWindowHandler {
                 Event::MainEventsCleared => {
                     // Render function
                     window.make_current();
-                    handler.on_draw();
+                    handler.on_draw().unwrap();
                     window.swap_buffers();
                     window.make_not_current();
                 }
-                Event::RedrawRequested(_) => {}
-                _ => {}
+                Event::RedrawRequested(_) => {
+                }
+                _ => {
+                }
             }
         });
     }
@@ -315,7 +317,7 @@ fn create_shader(source: &str, shader_type: types::GLenum) -> Result<types::GLui
             );
             error.set_len(log_len.try_into().unwrap());
             let error_msg = String::from_utf8_lossy(&error);
-            return Err(format!("Shader compile error: {}", error_msg));
+            return Err(error_msg.to_string());
         }
         Ok(id)
     }
@@ -347,7 +349,7 @@ fn create_program(shaders: &[Shader]) -> Result<types::GLuint, String> {
             );
             error.set_len(log_len.try_into().unwrap());
             let error_msg = String::from_utf8_lossy(&error);
-            return Err(format!("Program compile error: {}", error_msg));
+            return Err(error_msg.to_string());
         }
 
         for shader in shaders {
