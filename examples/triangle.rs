@@ -15,7 +15,7 @@ struct Handler {
 }
 
 impl Handler {
-    fn new(_win: &GLWindow) -> Result<Handler, String> {
+    fn new() -> Result<Handler, String> {
         let start_time = Instant::now();
         let frame_count = 0;
 
@@ -117,7 +117,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Run all OpenGL calls that only
     // needs to be run once in advance
     // of rendering to improve performance
-    let render_handler = Handler::new(&window)?;
+    let render_handler = Handler::new()?;
 
     // Event handling
     app.run_loop(window, render_handler);
