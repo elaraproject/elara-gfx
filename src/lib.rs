@@ -94,10 +94,8 @@ impl GLWindowHandler {
                     window.swap_buffers();
                     window.make_not_current();
                 }
-                Event::RedrawRequested(_) => {
-                }
-                _ => {
-                }
+                Event::RedrawRequested(_) => {}
+                _ => {}
             }
         });
     }
@@ -239,6 +237,79 @@ impl GLWindow {
     }
 }
 
+pub struct VertexArray(pub types::GLuint);
+
+impl VertexArray {
+    pub fn new() -> Result<VertexArray, String> {
+        let mut vao = create_vao();
+        if vao ! = 0 {
+            Ok(VertexArray(vao))
+        } else {
+            let err = String::new("Vertex array creation failed")
+            Err(format!("[elara-gfx] {}", err))
+        }
+    }
+    
+    pub fn bind(&self) {
+        unsafe {
+            gl::BindVertexArray(self.0)
+        }
+    }
+    
+    pub fn unbind(&self) {
+        unsafe {
+            gl::BindVertexArray(0)
+        }
+    }
+}
+
+pub struct Buffer(pub types::GLuint);
+
+impl Buffer {
+    pub fn new() -> Result<Buffer, String> {
+        let mut buffer = 0;
+        unsafe {
+            gl::GenBuffer(1, &mut buffer);
+        }
+        if buffer ! = 0 {
+            Ok(Buffer(buffer))
+        } else {
+            let err = String::new("Buffer creation failed")
+            Err(format!("[elara-gfx] {}", err))
+        }
+    }
+    
+    pub fn bind(&self, buffer_type: BufferType) {
+        unsafe {
+            gl::BindBuffer(buffer_type as types::GLenum, self.0)
+        }
+    }
+    
+    pub fn bind(&self, buffer_type: BufferType) {
+        unsafe {
+            gl::BindBuffer(buffer_type as types::GLenum, 0)
+        }
+    }
+    
+    pub fn data(&self, buffer_type: BufferType, data: &[u8], usage: types::GLenum)
+    {
+        unsafe {
+            gl::BufferData(
+                buffer_type as types::GLenum,
+                data.len().try_into().unwrap(),
+                data.as_ptr().cast(),
+                usage
+            )
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BufferType {
+    Array = gl::ARRAY_BUFFER as isize,
+    ElementArray = gl::ELEMENT_ARRAY_BUFFER as isize
+}
+
 pub struct Shader {
     id: types::GLuint,
 }
@@ -277,9 +348,33 @@ impl Program {
             gl::UseProgram(self.id);
         }
     }
+    
+    pub fn set_attribute(&self, attrib_name: &str, size: i32, stride: i32, ptr: *const f32) {
+        set_attribute(self.id, attrib_name, size, stride, ptr);
+    }
 
     pub fn id(&self) -> types::GLuint {
         self.id
+    }
+}
+
+fn set_attribute(program: types::GLuint, attrib_name: &str, size: i32, stride: i32, ptr: *const f32) {
+    // Append null terminator to Rust-converted strings
+    // so that they can be valid C strings passed to OpenGL
+    let null_terminator: char = '\0';
+    let mut attrib_name_bytes = attrib_name.as_bytes().to_vec();
+    attrib_name_bytes.push(null_terminator as u8);
+    unsafe {
+        let attrib = gl::GetAttribLocation(program, attrib_name_bytes.as_ptr().cast());
+        gl::VertexAttribPointer(
+            attrib as types::GLuint,
+            size,
+            gl::FLOAT,
+            0,
+            stride * std::mem::size_of::<f32>() as types::GLsizei,
+            ptr as *const types::c_void,
+        );
+        gl::EnableVertexAttribArray(attrib as types::GLuint);
     }
 }
 
@@ -301,6 +396,12 @@ pub fn create_vbo() -> types::GLuint {
     let mut vbo = 0;
     unsafe { gl::GenBuffers(1, &mut vbo) };
     vbo
+}
+
+pub fn create_ebo() -> types::GLuint {
+    let mut ebo = 0;
+    unsafe { gl::GenBuffers(1, &mut ebo) };
+    ebo
 }
 
 fn create_shader(source: &str, shader_type: types::GLenum) -> Result<types::GLuint, String> {
