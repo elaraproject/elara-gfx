@@ -349,6 +349,80 @@ impl Uniform {
 pub enum BufferType {
     Array = gl::ARRAY_BUFFER as isize,
     ElementArray = gl::ELEMENT_ARRAY_BUFFER as isize,
+    FrameBuffer = gl::FRAMEBUFFER as isize
+}
+
+pub struct FrameBuffer(pub types::GLuint);
+
+impl FrameBuffer {
+    pub fn new() -> Result<FrameBuffer, String> {
+        let mut framebuffer = 0;
+        unsafe {
+            gl::GenFrameBuffers(1, &mut framebuffer);
+        }
+        if buffer != 0 {
+            Ok(Buffer(framebuffer))
+        } else {
+            let err = String::from("Framebuffer creation failed");
+            Err(format!("[elara-gfx] {}", err))
+        }
+    }
+
+    pub fn bind(&self) {
+        unsafe { 
+            gl::BindFramebuffer(gl::FRAMEBUFFER, self.0);
+        }
+    }
+    
+    pub fn set_renderbuffer(&self, render_buffer: RenderBuffer) {
+        unsafe {
+            gl::FramebufferRenderbuffer(
+                gl::DRAW_FRAMEBUFFER,
+                gl::COLOR_ATTACHMENT0,
+                gl::RENDERBUFFER,
+                render_buffer.id()
+            )
+        }
+    }
+    
+    pub fn set_color_buffer(&self) {
+        unsafe {
+            gl::ReadBuffer(gl::COLOR_ATTACHMENT0);
+        }
+    }
+}
+
+pub struct RenderBuffer(pub types::GLuint);
+
+impl RenderBuffer {
+    pub fn new() -> Result<RenderBuffer, String> {
+        let mut render_buffer = 0;
+        unsafe {
+            gl::GenRenderbuffers(1, &mut render_buffer);
+        }
+        if buffer != 0 {
+            Ok(Buffer(render_buffer))
+        } else {
+            let err = String::from("Framebuffer creation failed");
+            Err(format!("[elara-gfx] {}", err))
+        }
+    }
+
+    pub fn bind(&self) {
+        unsafe { 
+            gl::BindRenderbuffer(gl::RENDERBUFFER, self.0);
+        }
+    }
+    
+    pub fn id(&self) -> u32 {
+        self.0
+    }
+    
+    pub fn set_storage(&self, width: i32, height: i32) {
+        unsafe {
+            gl::RenderbufferStorage(gl::RENDERBUFFER, gl::RGB565, width, height);
+        }
+    }
 }
 
 pub struct Shader {
@@ -449,6 +523,12 @@ pub fn create_ebo() -> types::GLuint {
     let mut ebo = 0;
     unsafe { gl::GenBuffers(1, &mut ebo) };
     ebo
+}
+
+pub fn create_fbo() -> types::GLuint {
+    let mut fbo = 0;
+    unsafe { gl::GenFramebuffers(1, &mut fbo) };
+    fbo
 }
 
 fn create_shader(source: &str, shader_type: types::GLenum) -> Result<types::GLuint, String> {
