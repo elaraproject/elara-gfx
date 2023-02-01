@@ -241,24 +241,54 @@ pub struct VertexArray(pub types::GLuint);
 
 impl VertexArray {
     pub fn new() -> Result<VertexArray, String> {
-        let mut vao = create_vao();
-        if vao ! = 0 {
+        let mut vao = 0;
+        unsafe { gl::GenVertexArrays(1, &mut vao) };
+        if vao != 0 {
             Ok(VertexArray(vao))
         } else {
-            let err = String::new("Vertex array creation failed")
+            let err = String::from("Vertex array creation failed");
             Err(format!("[elara-gfx] {}", err))
         }
     }
-    
+
     pub fn bind(&self) {
+        unsafe { gl::BindVertexArray(self.0) }
+    }
+
+    pub fn unbind(&self) {
+        unsafe { gl::BindVertexArray(0) }
+    }
+
+    pub fn vertex_attrib_pointer(
+        &self,
+        idx: types::GLuint,
+        size: types::GLint,
+        arr_type: types::GLenum,
+        normalized: bool,
+        stride: types::GLsizei,
+    ) {
         unsafe {
-            gl::BindVertexArray(self.0)
+            gl::VertexAttribPointer(
+                idx,
+                size,
+                arr_type as types::GLenum,
+                normalized as types::GLboolean,
+                stride,
+                std::ptr::null(),
+            )
         }
     }
-    
-    pub fn unbind(&self) {
+
+    pub fn enable_vertex_attrib(&self, index: types::GLuint) {
         unsafe {
-            gl::BindVertexArray(0)
+            gl::EnableVertexAttribArray(index);
+        }
+    }
+
+    pub fn get_attrib_location(&self, program: types::GLuint, name: &str) -> i32 {
+        unsafe {
+            let cstr = CString::new(name).unwrap();
+            gl::GetAttribLocation(program, cstr.as_ptr())
         }
     }
 }
@@ -269,45 +299,56 @@ impl Buffer {
     pub fn new() -> Result<Buffer, String> {
         let mut buffer = 0;
         unsafe {
-            gl::GenBuffer(1, &mut buffer);
+            gl::GenBuffers(1, &mut buffer);
         }
-        if buffer ! = 0 {
+        if buffer != 0 {
             Ok(Buffer(buffer))
         } else {
-            let err = String::new("Buffer creation failed")
+            let err = String::from("Buffer creation failed");
             Err(format!("[elara-gfx] {}", err))
         }
     }
-    
+
     pub fn bind(&self, buffer_type: BufferType) {
-        unsafe {
-            gl::BindBuffer(buffer_type as types::GLenum, self.0)
-        }
+        unsafe { gl::BindBuffer(buffer_type as types::GLenum, self.0) }
     }
-    
-    pub fn bind(&self, buffer_type: BufferType) {
-        unsafe {
-            gl::BindBuffer(buffer_type as types::GLenum, 0)
-        }
+
+    pub fn unbind(&self, buffer_type: BufferType) {
+        unsafe { gl::BindBuffer(buffer_type as types::GLenum, 0) }
     }
-    
-    pub fn data(&self, buffer_type: BufferType, data: &[u8], usage: types::GLenum)
-    {
+
+    // TODO: this might be better using generic instead of assuming
+    // data to be an array of f32 values
+    pub fn data<T>(&self, buffer_type: BufferType, data: &[T], usage: types::GLenum) {
         unsafe {
             gl::BufferData(
                 buffer_type as types::GLenum,
-                data.len().try_into().unwrap(),
-                data.as_ptr().cast(),
-                usage
+                (data.len() * std::mem::size_of::<T>()) as types::GLsizeiptr,
+                std::mem::transmute(&data[0]),
+                usage,
             )
         }
+    }
+}
+
+pub struct Uniform(pub types::GLint);
+
+impl Uniform {
+    pub fn new(program: types::GLuint, uniform_name: &str) -> Result<Uniform, String> {
+        let uniform_name = CString::new(uniform_name).unwrap();
+        let id = unsafe { gl::GetUniformLocation(program, uniform_name.as_ptr().cast()) };
+        Ok(Uniform(id))
+    }
+
+    pub fn id(&self) -> types::GLint {
+        self.0
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BufferType {
     Array = gl::ARRAY_BUFFER as isize,
-    ElementArray = gl::ELEMENT_ARRAY_BUFFER as isize
+    ElementArray = gl::ELEMENT_ARRAY_BUFFER as isize,
 }
 
 pub struct Shader {
@@ -348,7 +389,7 @@ impl Program {
             gl::UseProgram(self.id);
         }
     }
-    
+
     pub fn set_attribute(&self, attrib_name: &str, size: i32, stride: i32, ptr: *const f32) {
         set_attribute(self.id, attrib_name, size, stride, ptr);
     }
@@ -358,7 +399,13 @@ impl Program {
     }
 }
 
-fn set_attribute(program: types::GLuint, attrib_name: &str, size: i32, stride: i32, ptr: *const f32) {
+fn set_attribute(
+    program: types::GLuint,
+    attrib_name: &str,
+    size: i32,
+    stride: i32,
+    ptr: *const f32,
+) {
     // Append null terminator to Rust-converted strings
     // so that they can be valid C strings passed to OpenGL
     let null_terminator: char = '\0';
