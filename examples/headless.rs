@@ -1,90 +1,123 @@
-use std::path::PathBuf;
+// Demonstrates headless rendering to a PPM image
+use elara_gfx::{gl_info, Buffer, BufferType, Program, Shader, Uniform, VertexArray};
+use elara_gfx::{GLWindow, HandlerResult, WindowHandler};
+use elara_gfx::types::c_void;
+use elara_log::prelude::*;
+use std::error::Error;
+use std::fs::read_to_string;
+use std::process::exit;
+use std::time::{Duration, Instant};
 
-use effi::c_void;
-// Demonstrates headless rendering to a
-// PPM image
-use elara_gfx::gfx::*;
-use elara_gfx::{Event, EventLoop, GLWindow};
-use elara_log::Logger;
+const DUMMY_VERTEX_SHADER: &'static str = include_str!("shaders/quad.vert");
+const FRAG_SHADER: &'static str = include_str!("shaders/gradient.frag");
 
-const FRAG_SHADER_SRC: &str = include_str!("shaders/gradient.frag");
-const HEADLESS_ENABLED: bool = false;
+struct Handler {
+    vao: VertexArray,
+    program: Program,
+    resolution: (f32, f32),
+}
 
-fn main() -> GfxResult {
-    let mut log = Logger::new();
-    log.info("Program starting...");
+impl Handler {
+    fn new(win: &GLWindow) -> Result<Handler, String> {
+        let resolution = (win.width() as f32, win.height() as f32);
+        let vertex_shader = Shader::new(&DUMMY_VERTEX_SHADER, gl::VERTEX_SHADER)?;
+        let fragment_shader = Shader::new(&FRAG_SHADER, gl::FRAGMENT_SHADER)?;
+        let program = Program::new(&[vertex_shader, fragment_shader])?;
+        program.use_program();
 
-    // Begin event loop and create window
-    let event_loop = EventLoop::new();
-    let window = GLWindow::new(900, 600, "Window 1", true, &event_loop);
-    window.init_gl();
-    log.info(
-        format!(
-            "Window dimensions: {} x {}",
-            window.width(),
-            window.height()
-        )
-        .as_str(),
-    );
+        // Render 1 fullscreen quad for shaders
+        #[rustfmt::skip]
+        let vertices = [
+            1.0_f32, 1.0, 0.0, // top right
+            1.0, -1.0, 0.0, // bottom right
+            -1.0, -1.0, 0.0, // bottom left
+            -1.0, 1.0, 0.0, // top left
+        ];
 
-    // OpenGL info
-    gfxinfo();
+        #[rustfmt::skip]
+        let indices = [
+            0, 1, 3,
+            1, 2, 3
+        ];
 
-    let vertices = vec![
-        -1.0, 1.0, 1.0, 0.0, 0.0, // Top-left
-        1.0, 1.0, 0.0, 1.0, 0.0, // Top-right
-        1.0, -1.0, 0.0, 0.0, 1.0, // Bottom-right
-        -1.0, -1.0, 1.0, 1.0, 1.0, // Bottom-left
-    ];
+        let vao = VertexArray::new()?;
+        let vbo = Buffer::new()?;
+        let ebo = Buffer::new()?;
+        let fbo = FrameBuffer::new()?;
+        let color_rbo = RenderBuffer::new()?;
 
-    let elements = vec![0, 1, 2, 2, 3, 0];
+        vao.bind();
+        vbo.bind(BufferType::Array);
+        vbo.data::<f32>(BufferType::Array, &vertices, gl::STATIC_DRAW);
+        ebo.bind(BufferType::ElementArray);
+        ebo.data::<i32>(BufferType::ElementArray, &indices, gl::STATIC_DRAW);
+        fbo.bind();
+        color_rbo.bind();
+        
+        color_rbo.set_storage(win.width(), win.height());
+        fbo.set_renderbuffer(color_rbo);
+        fbo.set_color_buffer();
+        
+        assert!(unsafe { gl::CheckFramebufferStatus(gl::FRAMEBUFFER) })
+        unsafe {
+            glPixelStorei(gl::UNPACK_ALIGNMENT, 1);
+        }
+        
+        vao.vertex_attrib_pointer(0, 3, gl::FLOAT, false, 0);
+        vao.enable_vertex_attrib(0);
+        vbo.unbind(BufferType::Array);
+        vao.unbind();
 
-    let renderer = ElementRenderer::new(vertices, elements, get_dummy_vs(), &FRAG_SHADER_SRC);
-    renderer.attribute("position", 2, 5, null_ptr::<f32>());
+        Ok(Handler {
+            vao,
+            program,
+            resolution,
+        })
+    }
+}
 
-    let resolution = [window.width() as f32, window.height() as f32];
+impl WindowHandler for Handler {
+    fn on_draw(&mut self) -> HandlerResult<()> {
+        let width = self.resolution.0;
+        let height = self.resolution.1;
+        let buffer: Vec<f32> = Vec::with_capacity((width * height * 3.0) as usize);
+        unsafe {
+            let res_uniform = Uniform::new(self.program.id(), "u_resolution")?;
+            gl::Uniform2f(res_uniform.id(), width, height);
+
+            gl::ClearColor(0.2, 0.3, 0.3, 1.0);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+            self.vao.bind();
+            gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, std::ptr::null());
+            gl::ReadPixels(0, 
+                           0, 
+                           width as i32, 
+                           height as i32, 
+                           gl::BGR, 
+                           gl::UNSIGNED_BYTE, 
+                           buffer.as_ptr() as *mut c_void);
+            dbg!(buffer);
+            self.vao.unbind();
+        }
+        exit(0);
+        Ok(())
+    }
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    Logger::new().init().unwrap();
+    info!("Starting logging...");
+
+    let (app, window) = GLWindow::new_with_title("OpenGL shaders")?;
+    window.get_context()?;
+    gl_info();
+
+    // Run all OpenGL calls that only
+    // needs to be run once in advance
+    // of rendering to improve performance
+    let render_handler = Handler::new(&window)?;
 
     // Event handling
-    event_loop.run(move |event, _, control_flow| {
-        match event {
-            Event::WindowEvent {
-                event: winit::event::WindowEvent::CloseRequested,
-                ..
-            } => {
-                log.info("Close request received, exiting...");
-                control_flow.set_exit();
-            }
-            Event::MainEventsCleared => {
-                // Render function
-                window.make_current();
-                renderer.uniform_f32("u_resolution", &resolution);
-                renderer.draw(6);
-                if HEADLESS_ENABLED {
-                    let (width, height): (i32, i32) = (900, 600);
-                    let pixels: Vec<u8> =
-                        Vec::with_capacity((width * height * 4 as i32).try_into().unwrap());
-                    unsafe {
-                        gl::ReadPixels(
-                            0,
-                            0,
-                            width,
-                            height,
-                            gl::RGBA,
-                            gl::UNSIGNED_BYTE,
-                            pixels.as_slice().as_ptr() as *mut c_void,
-                        );
-                    }
-
-                    let mut image = PixelArray::new(width, height);
-                    image.add_data(&pixels);
-                    let image_file: PathBuf = PathBuf::from("OpenGL-rendering-result.ppm");
-                    image.save_as_ppm(image_file);
-                }
-                window.swap_buffers();
-                window.make_not_current();
-            }
-            Event::RedrawRequested(_) => {}
-            _ => {}
-        }
-    });
+    app.run_loop(window, render_handler);
+    Ok(())
 }
