@@ -358,10 +358,10 @@ impl FrameBuffer {
     pub fn new() -> Result<FrameBuffer, String> {
         let mut framebuffer = 0;
         unsafe {
-            gl::GenFrameBuffers(1, &mut framebuffer);
+            gl::GenFramebuffers(1, &mut framebuffer);
         }
-        if buffer != 0 {
-            Ok(Buffer(framebuffer))
+        if framebuffer != 0 {
+            Ok(FrameBuffer(framebuffer))
         } else {
             let err = String::from("Framebuffer creation failed");
             Err(format!("[elara-gfx] {}", err))
@@ -400,8 +400,8 @@ impl RenderBuffer {
         unsafe {
             gl::GenRenderbuffers(1, &mut render_buffer);
         }
-        if buffer != 0 {
-            Ok(Buffer(render_buffer))
+        if render_buffer != 0 {
+            Ok(RenderBuffer(render_buffer))
         } else {
             let err = String::from("Framebuffer creation failed");
             Err(format!("[elara-gfx] {}", err))
