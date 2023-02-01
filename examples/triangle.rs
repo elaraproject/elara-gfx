@@ -1,6 +1,6 @@
 // Renders a triangle with `elara-gfx`
-use elara_gfx::{gl_info, Program, Shader, create_vao, create_vbo};
-use elara_gfx::{types::*, GLWindow, HandlerResult, WindowHandler};
+use elara_gfx::{gl_info, Buffer, BufferType, Program, Shader, VertexArray};
+use elara_gfx::{GLWindow, HandlerResult, WindowHandler};
 use elara_log::prelude::*;
 use std::error::Error;
 use std::time::{Duration, Instant};
@@ -9,7 +9,7 @@ const VERT_SHADER: &str = include_str!("shaders/triangle.vert");
 const FRAG_SHADER: &str = include_str!("shaders/triangle.frag");
 
 struct Handler {
-    vao: GLuint,
+    vao: VertexArray,
     frame_count: u32,
     start_time: Instant,
 }
@@ -21,13 +21,6 @@ impl Handler {
 
         // Perform all onetime CPU operations
         // once here to speed up rendering
-        let vao = create_vao();
-        let vbo = create_vbo();
-        let vertex_shader = Shader::new(&VERT_SHADER, gl::VERTEX_SHADER)?;
-        let fragment_shader = Shader::new(&FRAG_SHADER, gl::FRAGMENT_SHADER)?;
-        let program = Program::new(&[vertex_shader, fragment_shader])?;
-        program.use_program();
-
         #[rustfmt::skip]
         let vertices = [
             -0.5f32, -0.5, 0.0,
@@ -35,30 +28,22 @@ impl Handler {
             0.0, 0.5, 0.0
         ];
 
-        unsafe {
-            gl::BindVertexArray(vao);
+        let vao = VertexArray::new()?;
+        vao.bind();
 
-            gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-            gl::BufferData(
-                gl::ARRAY_BUFFER,
-                std::mem::size_of_val(&vertices) as isize,
-                vertices.as_ptr().cast(),
-                gl::STATIC_DRAW,
-            );
+        let vbo = Buffer::new()?;
+        vbo.bind(BufferType::Array);
+        vbo.data::<f32>(BufferType::Array, &vertices, gl::STATIC_DRAW);
+        vao.vertex_attrib_pointer(0, 3, gl::FLOAT, false, 0);
+        vao.enable_vertex_attrib(0);
 
-            gl::VertexAttribPointer(
-                0,
-                3,
-                gl::FLOAT,
-                gl::FALSE,
-                3 * std::mem::size_of::<f32>() as i32,
-                0 as *const _,
-            );
-            gl::EnableVertexAttribArray(0);
+        vao.unbind();
+        vbo.unbind(BufferType::Array);
 
-            gl::BindBuffer(gl::ARRAY_BUFFER, 0);
-            gl::BindVertexArray(0);
-        }
+        let vertex_shader = Shader::new(&VERT_SHADER, gl::VERTEX_SHADER)?;
+        let fragment_shader = Shader::new(&FRAG_SHADER, gl::FRAGMENT_SHADER)?;
+        let program = Program::new(&[vertex_shader, fragment_shader])?;
+        program.use_program();
 
         Ok(Handler {
             vao,
@@ -92,9 +77,9 @@ impl WindowHandler for Handler {
         unsafe {
             gl::ClearColor(1.0, 1.0, 1.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
-            gl::BindVertexArray(self.vao);
+            self.vao.bind();
             gl::DrawArrays(gl::TRIANGLES, 0, 3);
-            gl::BindVertexArray(0);
+            self.vao.unbind();
         }
         self.add_frame();
         let current_frame = self.current_frame();
