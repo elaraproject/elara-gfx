@@ -94,9 +94,9 @@ impl WindowHandler for Handler {
 
             let now = std::time::Instant::now();
             let elapsed_time = now.duration_since(self.start_time).as_secs_f32();
-
-            gl::Uniform2f(res_uniform.id(), self.resolution.0, self.resolution.1);
-            gl::Uniform1f(time_uniform.id(), elapsed_time);
+            
+            time_uniform.uniform1f(elapsed_time);
+            res_uniform.uniform2f(self.resolution.0, self.resolution.1);
 
             gl::ClearColor(0.2, 0.3, 0.3, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);

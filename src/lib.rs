@@ -343,6 +343,18 @@ impl Uniform {
     pub fn id(&self) -> types::GLint {
         self.0
     }
+    
+    pub fn uniform1f(&self, val: f32) {
+        unsafe {
+            gl::Uniform1f(self.0, val);
+        }
+    }
+    
+    pub fn uniform2f(&self, val_a: f32, val_b: f32) {
+        unsafe {
+            gl::Uniform2f(self.0, val_a, val_b);
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
