@@ -12,6 +12,7 @@ const FRAG_SHADER: &str = include_str!("shaders/triangle.frag");
 
 struct Handler {
     vao: VertexArray,
+    vertex_num: usize
 }
 
 #[derive(Clone, Debug)]
@@ -29,6 +30,16 @@ impl Canvas {
     fn new() -> Canvas {
         Canvas { points: Vec::new() }
     }
+    
+    fn len(&self) -> usize {
+        let mut len = 0_usize;
+        for shape in self.points.iter() {
+            for vertex in shape.iter() {
+                len += 1_usize;
+            }
+        }
+        len
+    }
 
     // Creates a rectangle with top-left corner
     // at (x, y) with a width of w and a height of h
@@ -43,24 +54,30 @@ impl Canvas {
         let rect = vec![p1, p2, p3, p4, p5, p6];
         self.add_shape(rect);
     }
+
+    // Creates a polygon with center at (x, y)
+    // and radius of r; internally creates a polygon 
+    // composed of triangles
+    fn add_polygon(&mut self, x: f32, y: f32, r: f32, sides: i32) {
+        let mut theta = (2.0 * PI) / (sides as f32);
+        let mut polygon = Vec::new();
+        for i in 0..sides {
+            let p1 = [x + r * (i as f32 * theta).cos(), y + r * (i as f32 * theta).sin(), 0.0];
+            let p2 = [x + r * ((i - 1) as f32 * theta).cos(), y + r * ((i - 1) as f32 * theta).sin(), 0.0];
+            let p3 = [x, y, 0.0];
+            polygon.push(p1);
+            polygon.push(p2);
+            polygon.push(p3);
+        }
+        self.add_shape(polygon);
+    }
     
     // Creates a circle with center at (x, y)
-    // and radius of r
-    // internally creates a polygon composed of
-    // triangles with enough sides it creates the
-    // illusion of a circle
+    // and a radius of r; essentially a very
+    // well-subdivided polygon
     fn add_circle(&mut self, x: f32, y: f32, r: f32) {
-        let mut theta = 0_f32;
-        let delta = 0.01;
-        let mut circle = Vec::new();
-        while theta < (2.0 * PI) {
-            let x_point = x + r * theta.cos();
-            let y_point = y + r * theta.sin();
-            let p = [x_point, y_point, 0.0];
-            circle.push(p);
-            theta += delta
-        }
-        self.add_shape(circle);
+        const CIRCLE_SUBDIVISIONS: i32 = 128;
+        self.add_polygon(x, y, r, CIRCLE_SUBDIVISIONS);
     }
 
     fn add_shape(&mut self, vertex: Vec<[f32; 3]>) {
@@ -84,9 +101,12 @@ impl Handler {
     fn new() -> Result<Handler, String> {
         // Draw code here
         let mut canvas = Canvas::new();
-        canvas.add_rect(-0.5, 0.0, 0.8, 0.5);
-        // canvas.add_circle(0.2, 0.3, 0.4);
+        // canvas.add_rect(-0.5, 0.0, 0.8, 0.5);
+        // canvas.add_polygon(0.0, 0.0, 0.3, 6);
+        // canvas.add_rect(0.1, 0.5, 0.4, 0.3);
+        canvas.add_circle(0.0, 0.0, 0.4);
         let vertices = &canvas.to_vertices();
+        let vertex_num = canvas.len();
         println!("{:?}", vertices);
         let vao = VertexArray::new()?;
         vao.bind();
@@ -108,6 +128,7 @@ impl Handler {
 
         Ok(Handler {
             vao,
+            vertex_num
         })
     }
 }
@@ -116,11 +137,13 @@ impl Handler {
 impl WindowHandler for Handler {
     fn on_draw(&mut self) -> HandlerResult<()> {
         unsafe {
+            // Temporary fix so circles are not stretched
+            // gl::Viewport(0, 0, 600, 600);
             // gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
             gl::ClearColor(1.0, 1.0, 1.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             self.vao.bind();
-            gl::DrawArrays(gl::TRIANGLES, 0, 6);
+            gl::DrawArrays(gl::TRIANGLES, 0, self.vertex_num as i32);
             self.vao.unbind();
         }
         Ok(())
