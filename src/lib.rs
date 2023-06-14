@@ -259,13 +259,14 @@ impl VertexArray {
         unsafe { gl::BindVertexArray(0) }
     }
 
-    pub fn vertex_attrib_pointer(
+    pub fn vertex_attrib_pointer<T>(
         &self,
         idx: types::GLuint,
         size: types::GLint,
         arr_type: types::GLenum,
         normalized: bool,
-        stride: types::GLsizei,
+        stride: usize,
+        pointer: usize
     ) {
         unsafe {
             gl::VertexAttribPointer(
@@ -273,8 +274,8 @@ impl VertexArray {
                 size,
                 arr_type as types::GLenum,
                 normalized as types::GLboolean,
-                stride,
-                std::ptr::null(),
+                (stride * std::mem::size_of::<T>()) as types::GLsizei,
+                (pointer * std::mem::size_of::<T>()) as *const types::c_void,
             )
         }
     }
@@ -285,10 +286,10 @@ impl VertexArray {
         }
     }
 
-    pub fn get_attrib_location(&self, program: types::GLuint, name: &str) -> i32 {
+    pub fn get_attrib_location(&self, program: &Program, name: &str) -> i32 {
         unsafe {
             let cstr = CString::new(name).unwrap();
-            gl::GetAttribLocation(program, cstr.as_ptr())
+            gl::GetAttribLocation(program.clone().id(), cstr.as_ptr())
         }
     }
 }
@@ -460,6 +461,7 @@ impl Drop for Shader {
     }
 }
 
+#[derive(Clone)]
 pub struct Program {
     id: types::GLuint,
 }
