@@ -54,6 +54,12 @@ impl Canvas {
         let rect = vec![p1, p2, p3, p4, p5, p6];
         self.add_shape(rect);
     }
+    
+    // Creates a square with top-left corner
+    // at (x, y) with a width of w
+    fn add_square(&mut self, x: f32, y: f32, w: f32) {
+        self.add_rect(x, y, w, w);
+    }
 
     // Creates a polygon with center at (x, y)
     // and radius of r; internally creates a polygon 
