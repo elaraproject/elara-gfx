@@ -153,7 +153,13 @@ impl GLWindow {
             .with_visible(opts.is_visible)
             .build(&window_handler.event_loop)
             .unwrap();
-        let context = GlContext::create(&window, GlConfig::default()).unwrap();
+        // Enable MSAA
+        let config = GlConfig { 
+            samples: Some(4), 
+            ..GlConfig::default()
+        };
+        let context = GlContext::create(&window, config).unwrap();
+        
         let gl_window = GLWindow {
             width: opts.width,
             height: opts.height,
@@ -175,6 +181,10 @@ impl GLWindow {
     pub fn get_context(&self) -> GlResult<()> {
         self.context.make_current();
         gl::load_with(|symbol| self.context.get_proc_address(symbol) as *const types::c_void);
+        // Enable MSAA
+        unsafe { 
+            gl::Enable(gl::MULTISAMPLE);
+        }
         Ok(())
     }
 
