@@ -34,7 +34,7 @@ impl Handler {
         let vbo = Buffer::new()?;
         vbo.bind(BufferType::Array);
         vbo.data::<f32>(BufferType::Array, &vertices, gl::STATIC_DRAW);
-        vao.vertex_attrib_pointer(0, 3, gl::FLOAT, false, 0);
+        vao.vertex_attrib_pointer::<f32>(0, 3, gl::FLOAT, false, 0, 0);
         vao.enable_vertex_attrib(0);
 
         vao.unbind();
