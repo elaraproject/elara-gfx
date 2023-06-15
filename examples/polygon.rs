@@ -10,6 +10,30 @@ use std::f32::consts::PI;
 const VERT_SHADER: &str = include_str!("shaders/polygon.vert");
 const FRAG_SHADER: &str = include_str!("shaders/polygon.frag");
 
+fn subtract_vertices(x: [f32; 2], y: [f32; 2]) -> [f32; 2] {
+    let x_out = y[0] - x[0];
+    let y_out = y[1] - x[1];
+    [x_out, y_out]
+}
+
+
+fn add_vertices(x: [f32; 2], y: [f32; 2]) -> [f32; 2] {
+    let x_out = y[0] + x[0];
+    let y_out = y[1] + x[1];
+    [x_out, y_out]
+}
+
+fn vector_norm(x: [f32; 2]) -> f32 {
+    let norm: f32 = x.into_iter().map(|x| x * x).sum();
+    norm
+} 
+
+fn normalize_2d(x: [f32; 2], norm: f32, scale: f32) -> [f32; 2] {
+    let x_out = x[0] / (scale * norm);
+    let y_out = x[1] / (scale * norm);
+    [x_out, y_out]
+}
+
 struct Handler {
     vao: VertexArray,
     vertex_num: usize,
@@ -96,6 +120,42 @@ impl Canvas {
         self.add_polygon(x, y, r, CIRCLE_SUBDIVISIONS, fill);
     }
 
+    fn add_line(&mut self, path: Vec<[f32; 2]>, width: f32, fill: Color) {
+        let mut line = Vec::new();
+        let mut edge_normals: Vec<[f32; 2]> = Vec::new();
+        let mut vertex_normals = Vec::new();
+        let n = path.len();
+        for i in 0..n {
+            let j = (i + 1) % n;
+            let edge_tangent = subtract_vertices(path[j], path[i]);
+            let edge_normal = [-edge_tangent[1], edge_tangent[0]];
+            edge_normals.push(edge_normal);
+        }
+        for i in 0..n {
+            let j = (n + i - 1) % n;
+            let vertex_normal = add_vertices(edge_normals[i], edge_normals[j]);
+            let norm = vector_norm(vertex_normal);
+            let normalized_vector_normal = normalize_2d(vertex_normal, norm, 500.0 / (width));
+            vertex_normals.push(normalized_vector_normal);
+        }
+        for i in 0..(n - 1) {
+            let j = i + 1;
+            let p1 = [path[i][0], path[i][1], fill.0, fill.1, fill.2]; // top right
+            let p2 = [path[j][0] + vertex_normals[j][0], path[j][1] + vertex_normals[j][1], fill.0, fill.1, fill.2]; // bottom right
+            let p3 = [path[i][0] + vertex_normals[i][0], path[i][1] + vertex_normals[i][1], fill.0, fill.1, fill.2]; // top left
+            let p4 = [path[j][0] + vertex_normals[j][0], path[j][1] + vertex_normals[j][1], fill.0, fill.1, fill.2]; // bottom right
+            let p5 = [path[j][0], path[j][1], fill.0, fill.1, fill.2]; // bottom left;
+            let p6 = [path[i][0] + vertex_normals[i][0], path[i][1] + vertex_normals[i][1], fill.0, fill.1, fill.2]; // top left
+            line.push(p1);
+            line.push(p2);
+            line.push(p3);
+            line.push(p4);
+            line.push(p5);
+            line.push(p6);
+        }
+        self.add_shape(line);
+    }
+
     fn add_shape(&mut self, vertex: Vec<[f32; 5]>) {
         self.points.push(vertex);
     }
@@ -122,6 +182,7 @@ impl Handler {
         canvas.add_polygon(0.0, 0.0, 0.3, 6, Color(1.0, 0.0, 1.0));
         canvas.add_rect(0.1, 0.3, 0.4, 0.3, Color(0.0, 1.0, 0.0));
         canvas.add_circle(0.0, -0.2, 0.2, Color(0.0, 1.0, 1.0));
+        canvas.add_line(vec![[0.0, 0.9], [0.2, 0.8], [0.5, 0.6], [0.8, 0.5], [0.9, 0.3]], 1.0, Color(0.0, 0.0, 0.0));
         
         // End draw code
         let vertices = &canvas.to_vertices();
@@ -162,8 +223,7 @@ impl Handler {
 impl WindowHandler for Handler {
     fn on_draw(&mut self) -> HandlerResult<()> {
         unsafe {
-            // Temporary fix so circles are not stretched
-            // gl::Viewport(0, 0, 900, 900);
+            // gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
             gl::ClearColor(self.background.0, self.background.1, self.background.2, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             self.vao.bind();
