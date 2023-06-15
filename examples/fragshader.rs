@@ -62,7 +62,7 @@ impl Handler {
         vbo.data::<f32>(BufferType::Array, &vertices, gl::STATIC_DRAW);
         ebo.bind(BufferType::ElementArray);
         ebo.data::<i32>(BufferType::ElementArray, &indices, gl::STATIC_DRAW);
-        vao.vertex_attrib_pointer(0, 3, gl::FLOAT, false, 0);
+        vao.vertex_attrib_pointer::<f32>(0, 3, gl::FLOAT, false, 0, 0);
         vao.enable_vertex_attrib(0);
         vbo.unbind(BufferType::Array);
         vao.unbind();
