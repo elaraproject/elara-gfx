@@ -11,8 +11,8 @@ const VERT_SHADER: &str = include_str!("shaders/polygon.vert");
 const FRAG_SHADER: &str = include_str!("shaders/polygon.frag");
 
 fn subtract_vertices(x: [f32; 2], y: [f32; 2]) -> [f32; 2] {
-    let x_out = y[0] - x[0];
-    let y_out = y[1] - x[1];
+    let x_out = x[0] - y[0];
+    let y_out = x[1] - y[1];
     [x_out, y_out]
 }
 
@@ -24,13 +24,13 @@ fn add_vertices(x: [f32; 2], y: [f32; 2]) -> [f32; 2] {
 }
 
 fn vector_norm(x: [f32; 2]) -> f32 {
-    let norm: f32 = x.into_iter().map(|x| x * x).sum();
+    let norm: f32 = x.into_iter().map(|x| x * x).sum::<f32>().sqrt();
     norm
 } 
 
-fn normalize_2d(x: [f32; 2], norm: f32, scale: f32) -> [f32; 2] {
-    let x_out = x[0] / (scale * norm);
-    let y_out = x[1] / (scale * norm);
+fn abs_normalize_2d(x: [f32; 2], norm: f32, scale: f32) -> [f32; 2] {
+    let x_out = x[0].abs() / (scale * norm);
+    let y_out = x[1].abs() / (scale * norm);
     [x_out, y_out]
 }
 
@@ -60,7 +60,7 @@ impl Canvas {
     fn len(&self) -> usize {
         let mut len = 0_usize;
         for shape in self.points.iter() {
-            for vertex in shape.iter() {
+            for _vertex in shape.iter() {
                 len += 1_usize;
             }
         }
@@ -71,7 +71,7 @@ impl Canvas {
         self.background = color;
     }
     
-    fn background(mut self) -> Color {
+    fn background(self) -> Color {
         self.background
     }
 
@@ -87,6 +87,19 @@ impl Canvas {
         let p6 = [x, y, fill.0, fill.1, fill.2]; // top left
         let rect = vec![p1, p2, p3, p4, p5, p6];
         self.add_shape(rect);
+    }
+
+    // Creates a quad with 4 vertices going clockwise
+    // from the top-left
+    fn add_quad(&mut self, p1: [f32; 2], p2: [f32; 2], p3: [f32; 2], p4: [f32; 2], fill: Color) {
+        let point1 = [p2[0], p2[1], fill.0, fill.1, fill.2]; // top right
+        let point2 = [p3[0], p3[1], fill.0, fill.1, fill.2]; // bottom right
+        let point3 = [p1[0], p1[1], fill.0, fill.1, fill.2]; // top left
+        let point4 = [p3[0], p3[1], fill.0, fill.1, fill.2]; // bottom right
+        let point5 = [p4[0], p4[1], fill.0, fill.1, fill.2]; // bottom left
+        let point6 = [p1[0], p1[1], fill.0, fill.1, fill.2]; // top left
+        let quad = vec![point1, point2, point3, point4, point5, point6];
+        self.add_shape(quad)
     }
     
     // Creates a square with top-left corner
@@ -120,8 +133,11 @@ impl Canvas {
         self.add_polygon(x, y, r, CIRCLE_SUBDIVISIONS, fill);
     }
 
-    fn add_line(&mut self, path: Vec<[f32; 2]>, width: f32, fill: Color) {
-        let mut line = Vec::new();
+    // Creates a line from a path of points
+    // with paramters line width `width`, and optionally whether
+    // to form a closed loop `close_loop`
+    fn add_line(&mut self, path: Vec<[f32; 2]>, width: f32, fill: Color, close_loop: bool) {
+        // let mut line = Vec::new();
         let mut edge_normals: Vec<[f32; 2]> = Vec::new();
         let mut vertex_normals = Vec::new();
         let n = path.len();
@@ -135,25 +151,21 @@ impl Canvas {
             let j = (n + i - 1) % n;
             let vertex_normal = add_vertices(edge_normals[i], edge_normals[j]);
             let norm = vector_norm(vertex_normal);
-            let normalized_vector_normal = normalize_2d(vertex_normal, norm, 500.0 / (width));
+            let normalized_vector_normal = abs_normalize_2d(vertex_normal, norm, 500.0 / (width));
             vertex_normals.push(normalized_vector_normal);
         }
-        for i in 0..(n - 1) {
-            let j = i + 1;
-            let p1 = [path[i][0], path[i][1], fill.0, fill.1, fill.2]; // top right
-            let p2 = [path[j][0] + vertex_normals[j][0], path[j][1] + vertex_normals[j][1], fill.0, fill.1, fill.2]; // bottom right
-            let p3 = [path[i][0] + vertex_normals[i][0], path[i][1] + vertex_normals[i][1], fill.0, fill.1, fill.2]; // top left
-            let p4 = [path[j][0] + vertex_normals[j][0], path[j][1] + vertex_normals[j][1], fill.0, fill.1, fill.2]; // bottom right
-            let p5 = [path[j][0], path[j][1], fill.0, fill.1, fill.2]; // bottom left;
-            let p6 = [path[i][0] + vertex_normals[i][0], path[i][1] + vertex_normals[i][1], fill.0, fill.1, fill.2]; // top left
-            line.push(p1);
-            line.push(p2);
-            line.push(p3);
-            line.push(p4);
-            line.push(p5);
-            line.push(p6);
+        let mut num_iters = n - 1;
+        if close_loop == true {
+            num_iters = n;
         }
-        self.add_shape(line);
+        for i in 0..num_iters {
+            let j = (i + 1) % n;
+            let p1 = add_vertices(path[i], vertex_normals[i]);
+            let p2 = add_vertices(path[j], vertex_normals[j]);
+            let p3 = subtract_vertices(path[j], vertex_normals[j]);
+            let p4 = subtract_vertices(path[i], vertex_normals[i]);
+            self.add_quad(p1, p2, p3, p4, fill.clone());
+        }
     }
 
     fn add_shape(&mut self, vertex: Vec<[f32; 5]>) {
@@ -182,8 +194,10 @@ impl Handler {
         canvas.add_polygon(0.0, 0.0, 0.3, 6, Color(1.0, 0.0, 1.0));
         canvas.add_rect(0.1, 0.3, 0.4, 0.3, Color(0.0, 1.0, 0.0));
         canvas.add_circle(0.0, -0.2, 0.2, Color(0.0, 1.0, 1.0));
-        canvas.add_line(vec![[0.0, 0.9], [0.2, 0.8], [0.5, 0.6], [0.8, 0.5], [0.9, 0.3]], 1.0, Color(0.0, 0.0, 0.0));
-        
+        canvas.add_line(vec![[0.0, 0.9], [0.2, 0.8], [0.5, 0.6], [0.8, 0.5], [0.9, 0.3]], 2.0, Color(0.0, 0.5, 0.5), false);
+        canvas.add_quad([0.0, 0.5], [0.7, 0.5], [0.5, 0.3], [0.0, 0.4], Color(0.3, 0.4, 0.5));
+        canvas.add_line(vec![[0.0, 0.5], [0.7, 0.5], [0.5, 0.3], [0.0, 0.4]], 2.0, Color(0.0, 0.0, 0.0), true);
+
         // End draw code
         let vertices = &canvas.to_vertices();
         let vertex_num = canvas.len();
