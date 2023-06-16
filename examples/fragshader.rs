@@ -89,8 +89,8 @@ impl Handler {
 impl WindowHandler for Handler {
     fn on_draw(&mut self) -> HandlerResult<()> {
         unsafe {
-            let res_uniform = Uniform::new(self.program.id(), "u_resolution")?;
-            let time_uniform = Uniform::new(self.program.id(), "u_time")?;
+            let res_uniform = Uniform::new(&self.program, "u_resolution")?;
+            let time_uniform = Uniform::new(&self.program), "u_time")?;
 
             let now = std::time::Instant::now();
             let elapsed_time = now.duration_since(self.start_time).as_secs_f32();

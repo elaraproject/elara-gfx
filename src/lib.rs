@@ -345,9 +345,9 @@ impl Buffer {
 pub struct Uniform(pub types::GLint);
 
 impl Uniform {
-    pub fn new(program: types::GLuint, uniform_name: &str) -> Result<Uniform, String> {
+    pub fn new(program: &Program, uniform_name: &str) -> Result<Uniform, String> {
         let uniform_name = CString::new(uniform_name).unwrap();
-        let id = unsafe { gl::GetUniformLocation(program, uniform_name.as_ptr().cast()) };
+        let id = unsafe { gl::GetUniformLocation(program.id(), uniform_name.as_ptr().cast()) };
         Ok(Uniform(id))
     }
 
