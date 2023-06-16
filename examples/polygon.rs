@@ -1,6 +1,6 @@
 // This demo shows how to draw polygons and other shapes
 // using elara-gfx
-use elara_gfx::{gl_info, Buffer, BufferType, Program, Shader, VertexArray};
+use elara_gfx::{gl_info, Buffer, BufferType, Program, Shader, Uniform, VertexArray};
 use elara_gfx::{GLWindow, HandlerResult, WindowHandler};
 use elara_log::prelude::*;
 use std::error::Error;
@@ -37,7 +37,9 @@ fn abs_normalize_2d(x: [f32; 2], norm: f32, scale: f32) -> [f32; 2] {
 struct Handler {
     vao: VertexArray,
     vertex_num: usize,
-    background: Color
+    background: Color,
+    program: Program,
+    aspect_ratio: f32
 }
 
 #[derive(Clone, Debug)]
@@ -186,7 +188,7 @@ impl Canvas {
 }
 
 impl Handler {
-    fn new() -> Result<Handler, String> {
+    fn new(win: &GLWindow) -> Result<Handler, String> {
         // Draw code here
         let mut canvas = Canvas::new();
         canvas.set_background(Color(1.0, 1.0, 1.0));
@@ -202,6 +204,7 @@ impl Handler {
         let vertices = &canvas.to_vertices();
         let vertex_num = canvas.len();
         let background = canvas.background();
+        let aspect_ratio = win.height() as f32 / win.width() as f32;
         let vao = VertexArray::new()?;
         vao.bind();
 
@@ -228,7 +231,9 @@ impl Handler {
         Ok(Handler {
             vao,
             vertex_num,
-            background
+            background,
+            program,
+            aspect_ratio
         })
     }
 }
@@ -238,6 +243,8 @@ impl WindowHandler for Handler {
     fn on_draw(&mut self) -> HandlerResult<()> {
         unsafe {
             // gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
+            let aspect_ratio_uniform = Uniform::new(&self.program, "aspect_ratio")?;
+            aspect_ratio_uniform.uniform1f(self.aspect_ratio);
             gl::ClearColor(self.background.0, self.background.1, self.background.2, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             self.vao.bind();
@@ -260,7 +267,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Run all OpenGL calls that only
     // needs to be run once in advance
     // of rendering to improve performance
-    let render_handler = Handler::new()?;
+    let render_handler = Handler::new(&window)?;
 
     // Event handling
     app.run_loop(window, render_handler);
