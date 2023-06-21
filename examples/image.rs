@@ -1,14 +1,8 @@
 // demonstrates how to draw a basic image
-use elara_gfx::{gl_info, Buffer, BufferType, Program, Shader, Uniform, VertexArray, Texture2D, PixelArray};
+use elara_gfx::{gl_info, Buffer, BufferType, Program, Shader, VertexArray, Texture2D, PixelArray};
 use elara_gfx::{GLWindow, HandlerResult, WindowHandler};
-use elara_gfx::types::GLuint;
-use elara_log::prelude::*;
 use elara_log::prelude::*;
 use std::error::Error;
-use std::fs::File;
-use std::io::Read;
-use std::borrow::Cow;
-use std::path::{PathBuf, Path};
 
 const VERT_SHADER: &str = include_str!("shaders/image.vert");
 const FRAG_SHADER: &str = include_str!("shaders/image.frag");
@@ -53,32 +47,17 @@ impl Handler {
         
         let texture = Texture2D::new()?;
         texture.bind();
-
-        // Texture parameters
-        unsafe {
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32); // set texture wrapping to gl::REPEAT (default wrapping method)
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
-            // set texture filtering parameters
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-            // Enable blending
-            gl::Enable(gl::BLEND);
-            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
-        }
         
+        texture.parameter_2d(gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+        texture.parameter_2d(gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+        texture.parameter_2d(gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+        texture.parameter_2d(gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+        
+        texture.enable_alpha_blend();
+
         let img = PixelArray::load_png(IMG_PATH).unwrap();
-        unsafe {
-            gl::TexImage2D(gl::TEXTURE_2D,
-                           0,
-                           gl::RGBA as i32,
-                           img.width as i32,
-                           img.height as i32,
-                           0,
-                           gl::RGBA,
-                           gl::UNSIGNED_BYTE,
-                           img.data().as_ptr() as *const u8 as *const elara_gfx::types::c_void);
-            gl::GenerateMipmap(gl::TEXTURE_2D);
-        }
+        texture.set_image_2d(img);
+        texture.generate_mipmap();
         Ok(Handler { vao, texture })
     }
 }

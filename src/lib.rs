@@ -270,6 +270,39 @@ impl Texture2D {
     pub fn unbind(&self) {
         unsafe { gl::BindTexture(gl::TEXTURE_2D, 0) }
     }
+    
+    pub fn parameter_2d(&self, pname: types::GLenum, param: types::GLint) {
+        unsafe {
+            gl::TexParameteri(gl::TEXTURE_2D, pname, param);
+        }
+    }
+    
+    pub fn enable_alpha_blend(&self) {
+        unsafe {
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+        }
+    }
+    
+    pub fn generate_mipmap(&self) {
+        unsafe {
+            gl::GenerateMipmap(gl::TEXTURE_2D);
+        }
+    }
+    
+    pub fn set_image_2d(&self, img: PixelArray) {
+        unsafe {
+            gl::TexImage2D(gl::TEXTURE_2D,
+                           0,
+                           gl::RGBA as i32,
+                           img.width as i32,
+                           img.height as i32,
+                           0,
+                           gl::RGBA,
+                           gl::UNSIGNED_BYTE,
+                           img.data().as_ptr() as *const u8 as *const types::c_void);
+        }
+    }
 }
 
 pub struct VertexArray(pub types::GLuint);
