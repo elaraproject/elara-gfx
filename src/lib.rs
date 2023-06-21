@@ -12,6 +12,8 @@ mod error;
 pub mod types;
 use elara_log::prelude::*;
 use error::*;
+mod image;
+pub use image::PixelArray;
 
 // NOTE: elara-gfx uses elara-log internally to log
 // errors, if elara-log is not initialized
@@ -244,6 +246,29 @@ impl GLWindow {
         redraw_func();
         self.context.swap_buffers();
         self.context.make_not_current();
+    }
+}
+
+pub struct Texture2D(pub types::GLuint);
+
+impl Texture2D {
+    pub fn new() -> Result<Texture2D, String> {
+        let mut texture = 0;
+        unsafe { gl::GenTextures(1, &mut texture) };
+        if texture != 0 {
+            Ok(Texture2D(texture))
+        } else {
+            let err = String::from("Texture2D creation failed");
+            Err(format!("[elara-gfx] {}", err))
+        }
+    }
+    
+    pub fn bind(&self) {
+        unsafe { gl::BindTexture(gl::TEXTURE_2D, self.0) }
+    }
+    
+    pub fn unbind(&self) {
+        unsafe { gl::BindTexture(gl::TEXTURE_2D, 0) }
     }
 }
 

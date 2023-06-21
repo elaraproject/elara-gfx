@@ -10,6 +10,7 @@ raw-gl-context = "0.1.2"
 gl = "0.14.0"
 winit = { version = "0.27.3", default-features = false, features = ["x11"] }
 elara_log = { path = "src/elara-log" }
+png = "0.17.9"
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
