@@ -6,7 +6,7 @@ use std::error::Error;
 
 const VERT_SHADER: &str = include_str!("shaders/image.vert");
 const FRAG_SHADER: &str = include_str!("shaders/image.frag");
-const IMG_PATH: &str = "resources/text_flipped.png";
+const IMG_PATH: &str = "resources/text.png";
 
 struct Handler {
     vao: VertexArray,
@@ -55,7 +55,8 @@ impl Handler {
         
         texture.enable_alpha_blend();
 
-        let img = PixelArray::load_png(IMG_PATH).unwrap();
+        let mut img = PixelArray::load_png(IMG_PATH).unwrap();
+        img.flipv();
         texture.set_image_2d(img);
         texture.generate_mipmap();
         Ok(Handler { vao, texture })
