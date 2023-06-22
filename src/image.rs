@@ -104,25 +104,6 @@ impl PixelArray {
         flattened_data
     }
     
-    // Not working rn
-    // pub fn flipv(&mut self) {
-    //     for x in 0..(self.width * 4) {
-    //         for y in 0..(self.height * 4) {
-    //             self.data[x * self.width + y] = self.data[x * self.width + (self.height - 1 - y)];
-    //         }
-    //     }
-    // }
-    // pub fn flipv(&mut self) {
-    //     let mut pixel_start = 0;
-    //     for row in (0..self.height).rev() {
-    //         for column in 0..self.width {
-    //             let start = (row * self.width * self.channels) + (column * self.channels);
-    //             let end = start + self.channels;
-    //             self.data()[pixel_start..(pixel_start + self.channels)] = self.data()[start..end];
-    //             pixel_start += self.channels;
-    //         }
-    //     }
-    // }
     pub fn flipv(&mut self) {
         let mut new_data = self.clone();
         for i in 0..self.height {
@@ -133,24 +114,24 @@ impl PixelArray {
         self.data = new_data.data;
     }
     
-    // pub fn data_as_ptr(&self) -> 
+    // TODO: add more methods from https://github.com/ankitaS11/pyImageEdits
+    
+    pub fn write_ppm(&self) -> String {
+        let mut data_str = String::new();
+        let flattened_data = self.data();
+        for i in (0..flattened_data.len()).step_by(4) {
+            for j in 0..3 {
+                data_str += &(flattened_data[i + j].to_string() + " ");
+            }
+        }
+        format!("P3\n# Created by elara-gfx\n{} {}\n255\n{}", self.width, self.height, data_str)
+    }
 
-    // pub fn write_ppm(&self) -> String {
-    //     let mut data_str = String::new();
-    //     let flattened_data: Vec<u8> = self.data.into_iter().flatten().map(|el| el.clone()).collect();
-    //     for i in (0..flattened_data.len()).step_by(4) {
-    //         for j in 0..3 {
-    //             data_str += &(flattened_data[i + j].to_string() + " ");
-    //         }
-    //     }
-    //     format!("P3\n# Created by elara-gfx\n{} {}\n255\n{}", self.width, self.height, data_str)
-    // }
-
-    // pub fn save_as_ppm(&self, path: PathBuf) -> std::io::Result<()> {
-    //     let mut output = File::create(path)?;
-    //     write!(output, "{}", self.write_ppm())?;
-    //     Ok(())
-    // }
+    pub fn save_as_ppm(&self, path: PathBuf) -> std::io::Result<()> {
+        let mut output = File::create(path)?;
+        write!(output, "{}", self.write_ppm())?;
+        Ok(())
+    }
 }
 
 impl Index<[usize; 2]> for PixelArray {
