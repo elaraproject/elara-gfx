@@ -5,6 +5,7 @@ use elara_gfx::{GLWindow, HandlerResult, WindowHandler};
 use elara_log::prelude::*;
 use std::error::Error;
 use std::f32::consts::PI;
+use std::path::Path;
 
 
 const VERT_SHADER: &str = include_str!("shaders/polygon.vert");
@@ -101,7 +102,17 @@ impl Canvas {
         let point5 = [p4[0], p4[1], fill.0, fill.1, fill.2]; // bottom left
         let point6 = [p1[0], p1[1], fill.0, fill.1, fill.2]; // top left
         let quad = vec![point1, point2, point3, point4, point5, point6];
-        self.add_shape(quad)
+        self.add_shape(quad);
+    }
+
+    // Creates a triangle with 3 vertices going clockwise
+    // from the top
+    fn add_triangle(&mut self, p1: [f32; 2], p2: [f32; 2], p3: [f32; 2], fill: Color) {
+        let point1 = [p1[0], p1[1], fill.0, fill.1, fill.2];
+        let point2 = [p2[0], p2[1], fill.0, fill.1, fill.2];
+        let point3 = [p3[0], p3[1], fill.0, fill.1, fill.2];
+        let triangle = vec![point1, point2, point3];
+        self.add_shape(triangle);
     }
     
     // Creates a square with top-left corner
@@ -140,7 +151,7 @@ impl Canvas {
     // to form a closed loop `close_loop`
     fn add_line(&mut self, path: Vec<[f32; 2]>, width: f32, fill: Color, close_loop: bool) {
         // let mut line = Vec::new();
-        let mut edge_normals: Vec<[f32; 2]> = Vec::new();
+        let mut edge_normals: Vec<[f32; 2]> = Vec::	new();
         let mut vertex_normals = Vec::new();
         let n = path.len();
         for i in 0..n {
@@ -173,7 +184,9 @@ impl Canvas {
     fn add_shape(&mut self, vertex: Vec<[f32; 5]>) {
         self.points.push(vertex);
     }
-    
+
+    // fn add_image(&mut self, image_path: )
+
     fn to_vertices(&self) -> Vec<f32> {
         let mut vertices = Vec::new();
         for shape in self.points.iter() {
@@ -197,8 +210,7 @@ impl Handler {
         canvas.add_rect(0.1, 0.3, 0.4, 0.3, Color(0.0, 1.0, 0.0));
         canvas.add_circle(0.0, -0.2, 0.2, Color(0.0, 1.0, 1.0));
         canvas.add_line(vec![[0.0, 0.9], [0.2, 0.8], [0.5, 0.6], [0.8, 0.5], [0.9, 0.3]], 2.0, Color(0.0, 0.5, 0.5), false);
-        canvas.add_quad([0.0, 0.5], [0.7, 0.5], [0.5, 0.3], [0.0, 0.4], Color(0.3, 0.4, 0.5));
-        canvas.add_line(vec![[0.0, 0.5], [0.7, 0.5], [0.5, 0.3], [0.0, 0.4]], 2.0, Color(0.0, 0.0, 0.0), true);
+        canvas.add_quad([0.0, -0.5], [0.7, -0.5], [0.5, -0.8], [0.0, -0.6], Color(0.3, 0.4, 0.5));
 
         // End draw code
         let vertices = &canvas.to_vertices();
