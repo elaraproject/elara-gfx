@@ -139,8 +139,8 @@ impl Default for WindowOptions {
     fn default() -> WindowOptions {
         WindowOptions {
             title: "OpenGL window",
-            width: 900,
-            height: 600,
+            width: 1200,
+            height: 900,
             is_visible: true,
         }
     }
@@ -546,6 +546,12 @@ impl Program {
         }
     }
 
+    pub fn unuse_program(&self) {
+        unsafe {
+            gl::UseProgram(0);
+        }
+    }
+
     pub fn set_attribute(&self, attrib_name: &str, size: i32, stride: i32, ptr: *const f32) {
         set_attribute(self.id, attrib_name, size, stride, ptr);
     }
@@ -628,7 +634,11 @@ fn create_shader(source: &str, shader_type: types::GLenum) -> Result<types::GLui
         gl::GetShaderiv(id, gl::COMPILE_STATUS, &mut success);
 
         if success == 0 {
-            warn!("[elara-gfx] Shader compilation failed");
+            if shader_type == gl::VERTEX_SHADER {
+                warn!("[elara-gfx] Vertex shader compilation failed");
+            } else {
+                warn!("[elara-gfx] Fragment shader compilation failed");
+            }
             let mut log_len = 0_i32;
             let mut error: Vec<u8> = Vec::with_capacity(gl::INFO_LOG_LENGTH as usize);
             gl::GetShaderInfoLog(
