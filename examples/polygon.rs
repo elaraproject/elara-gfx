@@ -214,26 +214,22 @@ impl Canvas {
     // at (x, y) with a width of w and a height of h
     // internally creates 2 triangles
     fn add_rect(&mut self, x: f32, y: f32, w: f32, h: f32, fill: Color) {
-        let p1 = [x + w, y, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top right
-        let p2 = [x + w, y + h, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom right
-        let p3 = [x, y, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top left
-        let p4 = [x + w, y + h, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom right
-        let p5 = [x, y + h, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom left
-        let p6 = [x, y, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top left
-        let rect = vec![p1, p2, p3, p4, p5, p6];
+        let p1 = [x, y, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top left
+        let p2 = [x + w, y, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top right
+        let p3 = [x + w, y + h, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom right
+        let p4 = [x, y + h, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom left
+        let rect = vec![p2, p3, p1, p3, p4, p1];
         self.add_shape(rect);
     }
 
     // Creates a quad with 4 vertices going clockwise
     // from the top-left
     fn add_quad(&mut self, p1: [f32; 2], p2: [f32; 2], p3: [f32; 2], p4: [f32; 2], fill: Color) {
-        let point1 = [p2[0], p2[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top right
-        let point2 = [p3[0], p3[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom right
-        let point3 = [p1[0], p1[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top left
-        let point4 = [p3[0], p3[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom right
-        let point5 = [p4[0], p4[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom left
-        let point6 = [p1[0], p1[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top left
-        let quad = vec![point1, point2, point3, point4, point5, point6];
+        let point1 = [p1[0], p1[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top left
+        let point2 = [p2[0], p2[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top right
+        let point3 = [p3[0], p3[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom right
+        let point4 = [p4[0], p4[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom left
+        let quad = vec![point2, point3, point1, point3, point4, point1];
         self.add_shape(quad);
     }
 
@@ -320,13 +316,11 @@ impl Canvas {
     // Adds a textured quad for loading an image, with given 
     // texture coordinates starting from the top left
     fn add_image(&mut self, x: f32, y: f32, w: f32, h: f32, texcoord: [f32; 8]) {
-        let p1 = [x + w, y, 1.0, 1.0, 1.0, 0.0, texcoord[2], texcoord[3]]; // top right
-        let p2 = [x + w, y + h, 1.0, 1.0, 1.0, 0.0, texcoord[4], texcoord[5]]; // bottom right
-        let p3 = [x, y, 1.0, 1.0, 1.0, 0.0, texcoord[0], texcoord[1]]; // top left
-        let p4 = [x + w, y + h, 1.0, 1.0, 1.0, 0.0, texcoord[4], texcoord[5]]; // bottom right
-        let p5 = [x, y + h, 1.0, 1.0, 1.0, 0.0, texcoord[6], texcoord[7]]; // bottom left
-        let p6 = [x, y, 1.0, 1.0, 1.0, 0.0, texcoord[0], texcoord[1]]; // top left
-        let image = vec![p1, p2, p3, p4, p5, p6];
+        let p1 = [x, y, 1.0, 1.0, 1.0, 0.0, texcoord[0], texcoord[1]]; // top left
+        let p2 = [x + w, y, 1.0, 1.0, 1.0, 0.0, texcoord[2], texcoord[3]]; // top right
+        let p3 = [x + w, y + h, 1.0, 1.0, 1.0, 0.0, texcoord[4], texcoord[5]]; // bottom right
+        let p4 = [x, y + h, 1.0, 1.0, 1.0, 0.0, texcoord[6], texcoord[7]]; // bottom left
+        let image = vec![p2, p3, p1, p3, p4, p1];
         self.add_shape(image);
     }
 
