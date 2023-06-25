@@ -9,6 +9,120 @@ use std::f32::consts::PI;
 const VERT_SHADER: &str = include_str!("shaders/polygon.vert");
 const FRAG_SHADER: &str = include_str!("shaders/polygon.frag");
 
+// Hopefully the fact that this is a non power-of-two
+// texture isn't going to cause any problems
+const ATLAS_WIDTH: f32 = 353.0;
+const ATLAS_HEIGHT: f32 = 134.0;
+const ATLAS_CHARS: [char; 95] = [
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' ', '!', '\"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~'
+];
+const ATLAS: [CharCoord; 95] = [
+    CharCoord {  x: 90, y: 35, w: 18, h: 27, originX: 0, originY: 25, advance: 18 },
+    CharCoord {  x: 79, y: 88, w: 12, h: 26, originX: -1, originY: 25, advance: 18 },
+    CharCoord {  x: 299, y: 62, w: 18, h: 26, originX: 0, originY: 25, advance: 18 },
+    CharCoord {  x: 108, y: 35, w: 18, h: 27, originX: 0, originY: 25, advance: 18 },
+    CharCoord {  x: 179, y: 62, w: 20, h: 26, originX: 1, originY: 25, advance: 18 },
+    CharCoord {  x: 126, y: 35, w: 18, h: 27, originX: 0, originY: 25, advance: 18 },
+    CharCoord {  x: 144, y: 35, w: 18, h: 27, originX: 0, originY: 25, advance: 18 },
+    CharCoord {  x: 317, y: 62, w: 18, h: 26, originX: 0, originY: 25, advance: 18 },
+    CharCoord {  x: 162, y: 35, w: 18, h: 27, originX: 0, originY: 25, advance: 18 },
+    CharCoord {  x: 180, y: 35, w: 18, h: 27, originX: 0, originY: 25, advance: 18 },
+    CharCoord {  x: 228, y: 114, w: 3, h: 3, originX: 1, originY: 1, advance: 8 },
+    CharCoord {  x: 267, y: 35, w: 7, h: 27, originX: -1, originY: 25, advance: 8 },
+    CharCoord {  x: 138, y: 114, w: 12, h: 12, originX: 0, originY: 25, advance: 13 },
+    CharCoord {  x: 24, y: 62, w: 23, h: 26, originX: 1, originY: 25, advance: 21 },
+    CharCoord {  x: 171, y: 0, w: 18, h: 29, originX: 0, originY: 26, advance: 18 },
+    CharCoord {  x: 300, y: 0, w: 27, h: 27, originX: 0, originY: 25, advance: 26 },
+    CharCoord {  x: 327, y: 0, w: 25, h: 27, originX: 0, originY: 25, advance: 23 },
+    CharCoord {  x: 158, y: 114, w: 7, h: 12, originX: 0, originY: 25, advance: 7 },
+    CharCoord {  x: 75, y: 0, w: 10, h: 32, originX: 0, originY: 25, advance: 9 },
+    CharCoord {  x: 42, y: 0, w: 11, h: 32, originX: 1, originY: 25, advance: 9 },
+    CharCoord {  x: 102, y: 114, w: 18, h: 17, originX: 0, originY: 26, advance: 18 },
+    CharCoord {  x: 29, y: 114, w: 18, h: 19, originX: 0, originY: 21, advance: 18 },
+    CharCoord {  x: 150, y: 114, w: 8, h: 12, originX: 0, originY: 6, advance: 8 },
+    CharCoord {  x: 199, y: 114, w: 11, h: 6, originX: 0, originY: 12, advance: 10 },
+    CharCoord {  x: 174, y: 114, w: 7, h: 8, originX: -1, originY: 6, advance: 8 },
+    CharCoord {  x: 51, y: 88, w: 14, h: 26, originX: 1, originY: 25, advance: 12 },
+    CharCoord {  x: 126, y: 88, w: 7, h: 22, originX: -1, originY: 20, advance: 8 },
+    CharCoord {  x: 91, y: 88, w: 9, h: 26, originX: 1, originY: 20, advance: 8 },
+    CharCoord {  x: 47, y: 114, w: 18, h: 19, originX: 0, originY: 21, advance: 18 },
+    CharCoord {  x: 120, y: 114, w: 18, h: 12, originX: 0, originY: 18, advance: 18 },
+    CharCoord {  x: 65, y: 114, w: 18, h: 19, originX: 0, originY: 21, advance: 18 },
+    CharCoord {  x: 251, y: 35, w: 16, h: 27, originX: 1, originY: 25, advance: 14 },
+    CharCoord {  x: 123, y: 0, w: 29, h: 29, originX: 0, originY: 25, advance: 29 },
+    CharCoord {  x: 0, y: 62, w: 24, h: 26, originX: 2, originY: 25, advance: 20 },
+    CharCoord {  x: 199, y: 62, w: 20, h: 26, originX: -1, originY: 25, advance: 21 },
+    CharCoord {  x: 48, y: 35, w: 21, h: 27, originX: 0, originY: 25, advance: 20 },
+    CharCoord {  x: 70, y: 62, w: 22, h: 26, originX: -1, originY: 25, advance: 23 },
+    CharCoord {  x: 0, y: 88, w: 17, h: 26, originX: -1, originY: 25, advance: 18 },
+    CharCoord {  x: 17, y: 88, w: 17, h: 26, originX: -1, originY: 25, advance: 17 },
+    CharCoord {  x: 25, y: 35, w: 23, h: 27, originX: 0, originY: 25, advance: 23 },
+    CharCoord {  x: 158, y: 62, w: 21, h: 26, originX: -1, originY: 25, advance: 24 },
+    CharCoord {  x: 100, y: 88, w: 7, h: 26, originX: -1, originY: 25, advance: 9 },
+    CharCoord {  x: 53, y: 0, w: 11, h: 32, originX: 4, originY: 25, advance: 9 },
+    CharCoord {  x: 219, y: 62, w: 20, h: 26, originX: -1, originY: 25, advance: 20 },
+    CharCoord {  x: 34, y: 88, w: 17, h: 26, originX: -1, originY: 25, advance: 17 },
+    CharCoord {  x: 312, y: 35, w: 26, h: 26, originX: -1, originY: 25, advance: 29 },
+    CharCoord {  x: 92, y: 62, w: 22, h: 26, originX: -1, originY: 25, advance: 24 },
+    CharCoord {  x: 0, y: 35, w: 25, h: 27, originX: 0, originY: 25, advance: 25 },
+    CharCoord {  x: 335, y: 62, w: 18, h: 26, originX: -1, originY: 25, advance: 19 },
+    CharCoord {  x: 17, y: 0, w: 25, h: 32, originX: 0, originY: 25, advance: 25 },
+    CharCoord {  x: 239, y: 62, w: 20, h: 26, originX: -1, originY: 25, advance: 20 },
+    CharCoord {  x: 198, y: 35, w: 18, h: 27, originX: 0, originY: 25, advance: 18 },
+    CharCoord {  x: 259, y: 62, w: 20, h: 26, originX: 1, originY: 25, advance: 18 },
+    CharCoord {  x: 69, y: 35, w: 21, h: 27, originX: -1, originY: 25, advance: 23 },
+    CharCoord {  x: 47, y: 62, w: 23, h: 26, originX: 2, originY: 25, advance: 19 },
+    CharCoord {  x: 280, y: 35, w: 32, h: 26, originX: 1, originY: 25, advance: 30 },
+    CharCoord {  x: 114, y: 62, w: 22, h: 26, originX: 2, originY: 25, advance: 19 },
+    CharCoord {  x: 136, y: 62, w: 22, h: 26, originX: 2, originY: 25, advance: 18 },
+    CharCoord {  x: 279, y: 62, w: 20, h: 26, originX: 1, originY: 25, advance: 18 },
+    CharCoord {  x: 85, y: 0, w: 10, h: 32, originX: -1, originY: 25, advance: 10 },
+    CharCoord {  x: 65, y: 88, w: 14, h: 26, originX: 1, originY: 25, advance: 12 },
+    CharCoord {  x: 64, y: 0, w: 11, h: 32, originX: 1, originY: 25, advance: 10 },
+    CharCoord {  x: 83, y: 114, w: 19, h: 18, originX: 0, originY: 25, advance: 18 },
+    CharCoord {  x: 210, y: 114, w: 18, h: 5, originX: 2, originY: -1, advance: 14 },
+    CharCoord {  x: 165, y: 114, w: 9, h: 9, originX: 0, originY: 27, advance: 9 },
+    CharCoord {  x: 188, y: 88, w: 17, h: 21, originX: 0, originY: 19, advance: 18 },
+    CharCoord {  x: 209, y: 0, w: 19, h: 28, originX: -1, originY: 26, advance: 20 },
+    CharCoord {  x: 205, y: 88, w: 16, h: 21, originX: 0, originY: 19, advance: 15 },
+    CharCoord {  x: 228, y: 0, w: 19, h: 28, originX: 0, originY: 26, advance: 20 },
+    CharCoord {  x: 152, y: 88, w: 18, h: 21, originX: 0, originY: 19, advance: 18 },
+    CharCoord {  x: 285, y: 0, w: 15, h: 28, originX: 1, originY: 27, advance: 11 },
+    CharCoord {  x: 152, y: 0, w: 19, h: 29, originX: 1, originY: 20, advance: 17 },
+    CharCoord {  x: 216, y: 35, w: 18, h: 27, originX: -1, originY: 26, advance: 20 },
+    CharCoord {  x: 107, y: 88, w: 6, h: 26, originX: -1, originY: 25, advance: 8 },
+    CharCoord {  x: 0, y: 0, w: 11, h: 35, originX: 4, originY: 26, advance: 8 },
+    CharCoord {  x: 234, y: 35, w: 17, h: 27, originX: -1, originY: 26, advance: 17 },
+    CharCoord {  x: 274, y: 35, w: 6, h: 27, originX: -1, originY: 26, advance: 8 },
+    CharCoord {  x: 237, y: 88, w: 28, h: 20, originX: -1, originY: 19, advance: 30 },
+    CharCoord {  x: 331, y: 88, w: 18, h: 20, originX: -1, originY: 19, advance: 20 },
+    CharCoord {  x: 133, y: 88, w: 19, h: 21, originX: 0, originY: 19, advance: 19 },
+    CharCoord {  x: 247, y: 0, w: 19, h: 28, originX: -1, originY: 19, advance: 20 },
+    CharCoord {  x: 266, y: 0, w: 19, h: 28, originX: 0, originY: 19, advance: 20 },
+    CharCoord {  x: 16, y: 114, w: 13, h: 20, originX: -1, originY: 19, advance: 13 },
+    CharCoord {  x: 221, y: 88, w: 16, h: 21, originX: 0, originY: 19, advance: 15 },
+    CharCoord {  x: 113, y: 88, w: 13, h: 25, originX: 1, originY: 23, advance: 11 },
+    CharCoord {  x: 170, y: 88, w: 18, h: 21, originX: -1, originY: 19, advance: 20 },
+    CharCoord {  x: 292, y: 88, w: 20, h: 20, originX: 2, originY: 19, advance: 16 },
+    CharCoord {  x: 265, y: 88, w: 27, h: 20, originX: 1, originY: 19, advance: 25 },
+    CharCoord {  x: 312, y: 88, w: 19, h: 20, originX: 1, originY: 19, advance: 17 },
+    CharCoord {  x: 189, y: 0, w: 20, h: 28, originX: 2, originY: 19, advance: 16 },
+    CharCoord {  x: 0, y: 114, w: 16, h: 20, originX: 1, originY: 19, advance: 15 },
+    CharCoord {  x: 95, y: 0, w: 14, h: 31, originX: 1, originY: 25, advance: 12 },
+    CharCoord {  x: 11, y: 0, w: 6, h: 35, originX: -6, originY: 26, advance: 18 },
+    CharCoord {  x: 109, y: 0, w: 14, h: 31, originX: 1, originY: 25, advance: 12 },
+    CharCoord {  x: 181, y: 114, w: 18, h: 7, originX: 0, originY: 15, advance: 18 },
+];
+
+fn get_charcoord_from_char(character: char) -> Option<CharCoord> {
+    let index = ATLAS_CHARS.iter().position(|&c| c == character);
+    if let Some(idx) = index {
+        Some(ATLAS[idx.clone()])
+    } else {
+        None
+    }
+}
+
 fn subtract_vertices(x: [f32; 2], y: [f32; 2]) -> [f32; 2] {
     let x_out = x[0] - y[0];
     let y_out = x[1] - y[1];
@@ -60,6 +174,17 @@ impl TexCoord {
     pub fn default() -> [f32; 8] {
         [0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0] 
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CharCoord {
+    pub x: i32,
+    pub y: i32,
+    pub w: i32,
+    pub h: i32,
+    pub originX: i32,
+    pub originY: i32,
+    pub advance: i32
 }
 
 impl Canvas {
@@ -194,9 +319,7 @@ impl Canvas {
 
     // Adds a textured quad for loading an image, with given 
     // texture coordinates starting from the top left
-    fn add_image(&mut self, x: f32, y: f32, image: &PixelArray, texcoord: [f32; 8]) {
-        let w = image.width as f32 / 500.0;
-        let h = image.height as f32 / 500.0;
+    fn add_image(&mut self, x: f32, y: f32, w: f32, h: f32, texcoord: [f32; 8]) {
         let p1 = [x + w, y, 1.0, 1.0, 1.0, 0.0, texcoord[2], texcoord[3]]; // top right
         let p2 = [x + w, y + h, 1.0, 1.0, 1.0, 0.0, texcoord[4], texcoord[5]]; // bottom right
         let p3 = [x, y, 1.0, 1.0, 1.0, 0.0, texcoord[0], texcoord[1]]; // top left
@@ -232,7 +355,7 @@ impl Handler {
         canvas.add_circle(0.0, -0.2, 0.2, Color(0.0, 1.0, 1.0, 1.0));
         canvas.add_line(vec![[0.0, 0.9], [0.2, 0.8], [0.5, 0.6], [0.8, 0.5], [0.9, 0.3]], 2.0, Color(0.0, 0.5, 0.5, 1.0), false);
         canvas.add_quad([0.0, -0.5], [0.7, -0.5], [0.5, -0.8], [0.0, -0.6], Color(0.3, 0.4, 0.5, 1.0));
-        canvas.add_image(0.0, -0.5, &img, TexCoord::default());
+        canvas.add_image(0.0, -0.5, 0.5, 0.5, TexCoord::default());
 
         // End draw code
         let vertices = &canvas.to_vertices();
