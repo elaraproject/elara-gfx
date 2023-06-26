@@ -88,8 +88,8 @@ impl PixelArray {
     
     pub fn data(&self) -> Vec<u8> {
         let mut flattened_data = Vec::new();
-        for i in 0..self.width {
-            for j in 0..self.height {
+        for i in 0..self.height {
+            for j in 0..self.width {
                 let pixel = self[[i, j]];
                 let r = pixel.r;
                 let g = pixel.g;
@@ -140,7 +140,7 @@ impl Index<[usize; 2]> for PixelArray {
     fn index(&self, index: [usize; 2]) -> &Self::Output {
         let [i, j] = index;
         if i >= self.height || j >= self.width {
-            panic!("Image index out of bounds");
+            panic!("Image index [{}, {}] out of bounds, dimensions [{}, {}", i, j, self.height, self.width);
         }
         
         &self.data[(self.width * i) + j]
@@ -151,7 +151,7 @@ impl IndexMut<[usize; 2]> for PixelArray {
     fn index_mut(&mut self, index: [usize; 2]) -> &mut Self::Output {
         let [i, j] = index;
         if i >= self.height || j >= self.width {
-            panic!("Image index out of bounds");
+            panic!("Image index [{}, {}] out of bounds, dimensions [{}, {}", i, j, self.height, self.width);
         }
         
         &mut self.data[(self.width * i) + j]
