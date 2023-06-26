@@ -324,7 +324,7 @@ impl Canvas {
         self.add_shape(image);
     }
 
-    fn add_char(&mut self, x: f32, y: f32, character: char, size: f32) -> f32 {
+    fn add_char(&mut self, x: f32, y: f32, character: char, size: f32) {
         // TODO: proper error handling here
         let character_tex = get_charcoord_from_char(character).unwrap();
         let tex_x = character_tex.x as f32 / ATLAS_WIDTH;
@@ -337,16 +337,33 @@ impl Canvas {
             tex_x + tex_w, tex_y,
             tex_x, tex_y
         ];
-        self.add_image(x, y, tex_w + size * 0.003, tex_h, texcoords);
-        tex_w
+        self.add_image(x, y, tex_w * 0.05 * size, tex_h * 0.05 * size, texcoords);
+
     }
 
     fn add_text(&mut self, x0: f32, y0: f32, text: &str, size: f32) {
         let mut x = x0;
+        let y = y0;
         // let w = size * 0.005;
         for char in text.chars() {
-            let tex_w = self.add_char(x, y0, char, size);
-            x += tex_w + size * 0.003;
+            let character_tex = get_charcoord_from_char(char).unwrap();
+            // Top left (x, y+h)
+            let s0 = character_tex.x as f32 / ATLAS_WIDTH;
+            let t0 = (character_tex.y + character_tex.h) as f32 / ATLAS_HEIGHT;
+            // Top right (x+h, y+h)
+            let s1 = (character_tex.x + character_tex.w) as f32 / ATLAS_WIDTH;
+            let t1 = (character_tex.y + character_tex.h) as f32 / ATLAS_HEIGHT;
+            // Bottom right (x+h, y)
+            let s2 = (character_tex.x + character_tex.w) as f32 / ATLAS_WIDTH;
+            let t2 = character_tex.y as f32 / ATLAS_HEIGHT;
+            // Bottom left (x, y)
+            let s3 = character_tex.x as f32 / ATLAS_WIDTH;
+            let t3 = character_tex.y as f32 / ATLAS_HEIGHT;
+            let texcoords = [s0, t0, s1, t1, s2, t2, s3, t3];
+            let w = character_tex.w as f32 / ATLAS_WIDTH;
+            let h = character_tex.h as f32 / ATLAS_HEIGHT;
+            self.add_image(x, y, w, h, texcoords);
+            x += character_tex.advance as f32 / ATLAS_WIDTH;
         }
     }
 
