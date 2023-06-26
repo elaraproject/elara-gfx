@@ -324,7 +324,7 @@ impl Canvas {
         self.add_shape(image);
     }
 
-    fn add_char(&mut self, x: f32, y: f32, character: char, size: f32) {
+    fn add_char(&mut self, x: f32, y: f32, character: char, size: f32) -> f32 {
         // TODO: proper error handling here
         let character_tex = get_charcoord_from_char(character).unwrap();
         let tex_x = character_tex.x as f32 / ATLAS_WIDTH;
@@ -337,9 +337,17 @@ impl Canvas {
             tex_x + tex_w, tex_y,
             tex_x, tex_y
         ];
-        let w = size * 0.01;
-        let h = size * 0.01;
-        self.add_image(x, y, w, h, texcoords);
+        self.add_image(x, y, tex_w + size * 0.003, tex_h, texcoords);
+        tex_w
+    }
+
+    fn add_text(&mut self, x0: f32, y0: f32, text: &str, size: f32) {
+        let mut x = x0;
+        // let w = size * 0.005;
+        for char in text.chars() {
+            let tex_w = self.add_char(x, y0, char, size);
+            x += tex_w + size * 0.003;
+        }
     }
 
     fn to_vertices(&self) -> Vec<f32> {
@@ -369,7 +377,8 @@ impl Handler {
         canvas.add_line(vec![[0.0, 0.9], [0.2, 0.8], [0.5, 0.6], [0.8, 0.5], [0.9, 0.3]], 2.0, Color(0.0, 0.5, 0.5, 1.0), false);
         canvas.add_quad([0.0, -0.5], [0.7, -0.5], [0.5, -0.8], [0.0, -0.6], Color(0.3, 0.4, 0.5, 1.0));
         // canvas.add_image(0.0, -0.5, 0.5, 0.5, TexCoord::default());
-        canvas.add_char(-0.5, 0.0, 'A', 16.0);
+        // canvas.add_char(-0.5, 0.0, 'A', 16.0);
+        canvas.add_text(-0.5, 0.0, "Hello World!", 16.0);
 
         // End draw code
         let vertices = &canvas.to_vertices();
