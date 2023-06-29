@@ -14,6 +14,8 @@ use elara_log::prelude::*;
 use error::*;
 mod image;
 pub use image::PixelArray;
+mod canvas;
+pub use canvas::*;
 
 // NOTE: elara-gfx uses elara-log internally to log
 // errors, if elara-log is not initialized
@@ -175,6 +177,16 @@ impl GLWindow {
     pub fn new_with_title(title: &'static str) -> Result<(GLWindowHandler, GLWindow), WindowError> {
         let opts = WindowOptions {
             title,
+            ..WindowOptions::default()
+        };
+        Self::new(opts)
+    }
+
+    pub fn new_sized(title: &'static str, width: i32, height: i32) -> Result<(GLWindowHandler, GLWindow), WindowError> {
+        let opts = WindowOptions {
+            title,
+            width, 
+            height,
             ..WindowOptions::default()
         };
         Self::new(opts)
