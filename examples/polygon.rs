@@ -9,8 +9,6 @@ use std::f32::consts::PI;
 const VERT_SHADER: &str = include_str!("shaders/polygon.vert");
 const FRAG_SHADER: &str = include_str!("shaders/polygon.frag");
 
-// Hopefully the fact that this is a non power-of-two
-// texture isn't going to cause any problems
 const ATLAS_WIDTH: f32 = 358.0;
 const ATLAS_HEIGHT: f32 = 133.0;
 const ATLAS_CHARS: [char; 95] = [
@@ -165,7 +163,8 @@ struct Color(f32, f32, f32, f32);
 #[derive(Debug)]
 struct Canvas {
     points: Vec<Vec<[f32; 8]>>,
-    background: Color
+    background: Color,
+    aspect_ratio: f32
 }
 
 struct TexCoord;
@@ -188,8 +187,12 @@ struct CharCoord {
 }
 
 impl Canvas {
-    fn new() -> Canvas {
-        Canvas { points: Vec::new(), background: Color(1.0, 1.0, 1.0, 1.0) }
+    fn new(win: &GLWindow) -> Canvas {
+        Canvas { 
+            points: Vec::new(), 
+            background: Color(1.0, 1.0, 1.0, 1.0),
+            aspect_ratio: win.height() as f32 / win.width() as f32 
+        }
     }
     
     fn len(&self) -> usize {
@@ -316,29 +319,12 @@ impl Canvas {
     // Adds a textured quad for loading an image, with given 
     // texture coordinates starting from the top left going clockwise
     fn add_image(&mut self, x: f32, y: f32, w: f32, h: f32, texcoord: [f32; 8]) {
-        let p1 = [x, y, 1.0, 1.0, 1.0, 0.0, texcoord[0], texcoord[1]]; // top left
-        let p2 = [x + w, y, 1.0, 1.0, 1.0, 0.0, texcoord[2], texcoord[3]]; // top right
-        let p3 = [x + w, y + h, 1.0, 1.0, 1.0, 0.0, texcoord[4], texcoord[5]]; // bottom right
-        let p4 = [x, y + h, 1.0, 1.0, 1.0, 0.0, texcoord[6], texcoord[7]]; // bottom left
+        let p1 = [x, y, 1.0, 1.0, 1.0, 0.0, texcoord[0], texcoord[1]];
+        let p2 = [x + w, y, 1.0, 1.0, 1.0, 0.0, texcoord[2], texcoord[3]];
+        let p3 = [x + w, y + h, 1.0, 1.0, 1.0, 0.0, texcoord[4], texcoord[5]];
+        let p4 = [x, y + h, 1.0, 1.0, 1.0, 0.0, texcoord[6], texcoord[7]];
         let image = vec![p2, p3, p1, p3, p4, p1];
         self.add_shape(image);
-    }
-
-    fn add_char(&mut self, x: f32, y: f32, character: char, size: f32) {
-        // TODO: proper error handling here
-        let character_tex = get_charcoord_from_char(character).unwrap();
-        let tex_x = character_tex.x as f32 / ATLAS_WIDTH;
-        let tex_y = character_tex.y as f32 / ATLAS_HEIGHT;
-        let tex_w = character_tex.w as f32 / ATLAS_WIDTH;
-        let tex_h = character_tex.h as f32 / ATLAS_HEIGHT;
-        let texcoords = [
-            tex_x, tex_y + tex_h,
-            tex_x + tex_w, tex_y + tex_h,
-            tex_x + tex_w, tex_y,
-            tex_x, tex_y
-        ];
-        self.add_image(x, y, tex_w * 0.05 * size, tex_h * 0.05 * size, texcoords);
-
     }
 
     fn add_text(&mut self, x0: f32, y0: f32, text: &str, size: f32) {
@@ -359,11 +345,12 @@ impl Canvas {
             // Bottom left (x, y)
             let s3 = character_tex.x as f32 / ATLAS_WIDTH;
             let t3 = character_tex.y as f32 / ATLAS_HEIGHT;
+            // Texcoords
             let texcoords = [s0, t0, s1, t1, s2, t2, s3, t3];
-            let w = character_tex.w as f32 / ATLAS_WIDTH;
-            let h = character_tex.h as f32 / ATLAS_HEIGHT;
+            let w = (character_tex.w as f32) / (ATLAS_WIDTH * size * 0.1 * self.aspect_ratio);
+            let h = character_tex.h as f32 / (ATLAS_HEIGHT * size * 0.1);
             self.add_image(x, y, w, h, texcoords);
-            x += character_tex.advance as f32 / ATLAS_WIDTH;
+            x += (character_tex.advance as f32) / (ATLAS_WIDTH * size * 0.1 * self.aspect_ratio);
         }
     }
 
@@ -383,9 +370,8 @@ impl Canvas {
 impl Handler {
     fn new(win: &GLWindow) -> Result<Handler, String> {
         // Draw code here
-        let mut canvas = Canvas::new();
+        let mut canvas = Canvas::new(&win);
         let img = PixelArray::load_png("resources/font-tex.png").unwrap();
-        println!("Character map result: {:?}", get_charcoord_from_char('A'));
         canvas.set_background(Color(1.0, 1.0, 1.0, 1.0));
         canvas.add_rect(-0.5, 0.0, 0.8, 0.5, Color(1.0, 0.0, 0.0, 1.0));
         canvas.add_polygon(0.0, 0.0, 0.3, 6, Color(1.0, 0.0, 1.0, 1.0));
@@ -393,8 +379,6 @@ impl Handler {
         canvas.add_circle(0.0, -0.2, 0.2, Color(0.0, 1.0, 1.0, 1.0));
         canvas.add_line(vec![[0.0, 0.9], [0.2, 0.8], [0.5, 0.6], [0.8, 0.5], [0.9, 0.3]], 2.0, Color(0.0, 0.5, 0.5, 1.0), false);
         canvas.add_quad([0.0, -0.5], [0.7, -0.5], [0.5, -0.8], [0.0, -0.6], Color(0.3, 0.4, 0.5, 1.0));
-        // canvas.add_image(0.0, -0.5, 0.5, 0.5, TexCoord::default());
-        // canvas.add_char(-0.5, 0.0, 'A', 16.0);
         canvas.add_text(-0.5, 0.0, "Hello World!", 16.0);
 
         // End draw code
