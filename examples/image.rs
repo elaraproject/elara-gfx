@@ -55,7 +55,7 @@ impl Handler {
         
         texture.enable_alpha_blend();
 
-        let mut img = PixelArray::load_png(IMG_PATH).unwrap();
+        let mut img = PixelArray::load_png_from_path(IMG_PATH).unwrap();
         img.flipv();
         texture.set_image_2d(img);
         texture.generate_mipmap();
