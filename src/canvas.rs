@@ -252,6 +252,34 @@ impl Canvas {
         }
         self.add_shape(polygon);
     }
+
+    // Easter egg - draws a heart curve
+    pub fn add_heart(&mut self, x: f32, y: f32, r: f32, fill: Color) {
+        /*
+            x(t) = r/19 * 16sin^3(t)
+            y(t) = r/19 * (13cos(t) - 5cos(2t) -2cos(3t) - cos(4t)) 
+         */
+        self.add_parametric(x, y, |t| r / 19.0 * 16.0 * t.sin().powi(3), |t| r / 19.0 * (13.0 * t.cos() - 5.0 * (2.0 * t).cos() - 2.0 * (3.0 * t).cos() - (4.0 * t).cos()), 0.0, 2.0 * PI, fill)
+    }
+
+    // Draws a parametric curve from t = t0 to t = tf - for most situations use 0 to 2π
+    pub fn add_parametric<F1, F2>(&mut self, x: f32, y: f32, x_t: F1, y_t: F2, t0: f32, tf: f32, fill: Color) 
+    where F1: Fn(f32) -> f32, F2: Fn(f32) -> f32
+    {
+        let mut t = t0;
+        let mut curve = Vec::new();
+        let dt = 0.01_f32;
+        while t < tf {
+            let p1 = [x + x_t(t), y + y_t(t), fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
+            let p2 = [x + x_t(t - dt), y + y_t(t - dt), fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
+            let p3 = [x, y, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
+            curve.push(p1);
+            curve.push(p2);
+            curve.push(p3);
+            t += dt;
+        }
+        self.add_shape(curve);
+    }
     
     // Creates a circle with center at (x, y)
     // and a radius of r; essentially a very
