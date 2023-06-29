@@ -1,9 +1,10 @@
-use std::path::Path;
+use std::{path::Path, io::Read};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use png;
 use png::ColorType::*;
+use winit::dpi::Pixel;
 use std::ops::{Index, IndexMut};
 
 #[derive(Clone, Debug)]
@@ -22,8 +23,12 @@ pub struct RGBA {
 }
 
 impl PixelArray {
-    pub fn load_png<T: AsRef<Path>>(path: T) -> std::io::Result<PixelArray> {
-        let mut decoder = png::Decoder::new(File::open(path)?);
+    pub fn load_png_from_path<T: AsRef<Path>>(path: T) -> std::io::Result<PixelArray> {
+        Self::load_png(File::open(path)?)
+    }
+
+    pub fn load_png<R: Read>(r: R) -> std::io::Result<PixelArray> {
+        let mut decoder = png::Decoder::new(r);
         decoder.set_transformations(png::Transformations::normalize_to_color8());
         let mut reader = decoder.read_info()?;
         let mut img_data = vec![0; reader.output_buffer_size()];
