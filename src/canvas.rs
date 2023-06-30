@@ -1,7 +1,8 @@
 use std::f32::consts::PI;
 use crate::{GLWindow, VertexArray, Texture2D, Program, Draw, PixelArray, WindowHandler, Buffer, BufferType, Shader, HandlerResult, Uniform};
 
-pub const ATLAS_IMG: &[u8] = include_bytes!("resources/font-tex.png");
+pub const ATLAS_IMG_BLACK: &[u8] = include_bytes!("resources/font-tex.png");
+pub const ATLAS_IMG_WHITE: &[u8] = include_bytes!("resources/font-tex-white.png");
 pub const ATLAS_WIDTH: f32 = 358.0;
 pub const ATLAS_HEIGHT: f32 = 133.0;
 pub const ATLAS_CHARS: [char; 95] = [
@@ -171,7 +172,7 @@ pub fn abs_normalize_2d(x: [f32; 2], norm: f32, scale: f32) -> [f32; 2] {
 pub struct Vertex(f32, f32);
 
 #[derive(Clone, Debug)]
-pub struct Color(pub f32, pub f32, pub f32, pub f32);
+pub struct Color(pub i32, pub i32, pub i32, pub f32);
 
 #[derive(Debug)]
 pub struct Canvas {
@@ -203,7 +204,7 @@ impl Canvas {
     pub fn new(win: &GLWindow) -> Canvas {
         Canvas { 
             points: Vec::new(), 
-            background: Color(1.0, 1.0, 1.0, 1.0),
+            background: Color(255, 255, 255, 1.0),
             aspect_ratio: win.height() as f32 / win.width() as f32 
         }
     }
@@ -230,10 +231,10 @@ impl Canvas {
     // at (x, y) with a width of w and a height of h
     // internally creates 2 triangles
     pub fn add_rect(&mut self, x: f32, y: f32, w: f32, h: f32, fill: Color) {
-        let p1 = [x, y, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top left
-        let p2 = [x + w, y, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top right
-        let p3 = [x + w, y + h, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom right
-        let p4 = [x, y + h, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom left
+        let p1 = [x, y, fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0]; // top left
+        let p2 = [x + w, y, fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0]; // top right
+        let p3 = [x + w, y + h, fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0]; // bottom right
+        let p4 = [x, y + h, fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0]; // bottom left
         let rect = vec![p2, p3, p1, p3, p4, p1];
         self.add_shape(rect);
     }
@@ -241,10 +242,10 @@ impl Canvas {
     // Creates a quad with 4 vertices going clockwise
     // from the top-left
     pub fn add_quad(&mut self, p1: [f32; 2], p2: [f32; 2], p3: [f32; 2], p4: [f32; 2], fill: Color) {
-        let point1 = [p1[0], p1[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top left
-        let point2 = [p2[0], p2[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // top right
-        let point3 = [p3[0], p3[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom right
-        let point4 = [p4[0], p4[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0]; // bottom left
+        let point1 = [p1[0], p1[1], fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0]; // top left
+        let point2 = [p2[0], p2[1], fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0]; // top right
+        let point3 = [p3[0], p3[1], fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0]; // bottom right
+        let point4 = [p4[0], p4[1], fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0]; // bottom left
         let quad = vec![point2, point3, point1, point3, point4, point1];
         self.add_shape(quad);
     }
@@ -252,9 +253,9 @@ impl Canvas {
     // Creates a triangle with 3 vertices going clockwise
     // from the top
     pub fn add_triangle(&mut self, p1: [f32; 2], p2: [f32; 2], p3: [f32; 2], fill: Color) {
-        let point1 = [p1[0], p1[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
-        let point2 = [p2[0], p2[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
-        let point3 = [p3[0], p3[1], fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
+        let point1 = [p1[0], p1[1], fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0];
+        let point2 = [p2[0], p2[1], fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0];
+        let point3 = [p3[0], p3[1], fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0];
         let triangle = vec![point1, point2, point3];
         self.add_shape(triangle);
     }
@@ -272,9 +273,9 @@ impl Canvas {
         let theta = (2.0 * PI) / (sides as f32);
         let mut polygon = Vec::new();
         for i in 0..sides {
-            let p1 = [x + r * (i as f32 * theta).cos(), y + r * (i as f32 * theta).sin(), fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
-            let p2 = [x + r * ((i - 1) as f32 * theta).cos(), y + r * ((i - 1) as f32 * theta).sin(), fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
-            let p3 = [x, y, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
+            let p1 = [x + r * (i as f32 * theta).cos(), y + r * (i as f32 * theta).sin(), fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0];
+            let p2 = [x + r * ((i - 1) as f32 * theta).cos(), y + r * ((i - 1) as f32 * theta).sin(), fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0];
+            let p3 = [x, y, fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0];
             polygon.push(p1);
             polygon.push(p2);
             polygon.push(p3);
@@ -299,9 +300,9 @@ impl Canvas {
         let mut curve = Vec::new();
         let dt = 0.01_f32;
         while t < tf {
-            let p1 = [x + x_t(t), y + y_t(t), fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
-            let p2 = [x + x_t(t - dt), y + y_t(t - dt), fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
-            let p3 = [x, y, fill.0, fill.1, fill.2, fill.3, 1.0, 1.0];
+            let p1 = [x + x_t(t), y + y_t(t), fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0];
+            let p2 = [x + x_t(t - dt), y + y_t(t - dt), fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0];
+            let p3 = [x, y, fill.0 as f32 / 255.0, fill.1 as f32 / 255.0, fill.2 as f32 / 255.0, fill.3 as f32, 1.0, 1.0];
             curve.push(p1);
             curve.push(p2);
             curve.push(p3);
@@ -418,10 +419,11 @@ pub struct CanvasHandler {
 }
 
 impl CanvasHandler {
-    pub fn new<D>(win: &GLWindow, mut canvas: D) -> Result<CanvasHandler, String> 
+    pub fn new<D>(win: &GLWindow, mut canvas: D, white_text: bool) -> Result<CanvasHandler, String> 
         where D: Draw + 'static
     {
         let canvas = canvas.draw(&win)?;
+        let ATLAS_IMG = if white_text { ATLAS_IMG_WHITE } else { ATLAS_IMG_BLACK };
         let img = PixelArray::load_png(ATLAS_IMG).unwrap();
         let vertices = &canvas.to_vertices();
         let vertex_num = canvas.len();
@@ -482,7 +484,7 @@ impl WindowHandler for CanvasHandler {
             // gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
             let aspect_ratio_uniform = Uniform::new(&self.program, "aspect_ratio")?;
             aspect_ratio_uniform.uniform1f(self.aspect_ratio);
-            gl::ClearColor(self.background.0, self.background.1, self.background.2, 1.0);
+            gl::ClearColor(self.background.0 as f32, self.background.1 as f32, self.background.2 as f32, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             self.texture.bind();
             self.vao.bind();
