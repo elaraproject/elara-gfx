@@ -1,5 +1,5 @@
 use std::f32::consts::PI;
-use crate::GLWindow;
+use crate::{GLWindow, VertexArray, Texture2D, Program, Draw, PixelArray, WindowHandler, Buffer, BufferType, Shader, HandlerResult, Uniform};
 
 pub const ATLAS_IMG: &[u8] = include_bytes!("resources/font-tex.png");
 pub const ATLAS_WIDTH: f32 = 358.0;
@@ -104,6 +104,35 @@ pub const ATLAS: [CharCoord; 95] = [
     CharCoord {  x: 55, y: 0, w: 14, h: 32, originX: 1, originY: 25, advance: 12 },
     CharCoord {  x: 145, y: 114, w: 18, h: 7, originX: 0, originY: 15, advance: 18 },
 ];
+
+const CANVAS_VERT_SHADER: &'static str = r#"
+#version 330 core
+in vec2 position;
+in vec2 tex_coord;
+in vec4 vertex_color;
+out vec2 TexCoord;
+out vec4 VertexColor;
+uniform float aspect_ratio;
+
+void main() {
+    VertexColor = vertex_color;
+    TexCoord = tex_coord;
+    gl_Position = vec4(position.x * aspect_ratio, position.y, 0.0, 1.0);
+}
+"#;
+
+const CANVAS_FRAG_SHADER: &'static str = r#"
+#version 330 core
+in vec2 TexCoord;
+in vec4 VertexColor;
+uniform sampler2D uTexture;
+out vec4 FragColor;
+
+void main() {
+    vec4 col = texture(uTexture, TexCoord);
+    FragColor = mix(VertexColor.rgba, col, col.a);
+}
+"#;
 
 pub fn get_charcoord_from_char(character: char) -> Option<CharCoord> {
     let index = ATLAS_CHARS.iter().position(|&c| c == character);
@@ -376,5 +405,91 @@ impl Canvas {
             }
         }
         vertices
+    }
+}
+
+pub struct CanvasHandler {
+    vao: VertexArray,
+    vertex_num: usize,
+    background: Color,
+    program: Program,
+    aspect_ratio: f32,
+    texture: Texture2D
+}
+
+impl CanvasHandler {
+    pub fn new<D>(win: &GLWindow, mut canvas: D) -> Result<CanvasHandler, String> 
+        where D: Draw + 'static
+    {
+        let canvas = canvas.draw(&win)?;
+        let img = PixelArray::load_png(ATLAS_IMG).unwrap();
+        let vertices = &canvas.to_vertices();
+        let vertex_num = canvas.len();
+        let background = canvas.background();
+        let aspect_ratio = win.height() as f32 / win.width() as f32;
+
+        let texture = Texture2D::new()?;
+        texture.bind();
+        texture.parameter_2d(gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+        texture.parameter_2d(gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        texture.enable_alpha_blend();
+
+        texture.set_image_2d(img);
+        texture.generate_mipmap();
+
+        let vao = VertexArray::new()?;
+        vao.bind();
+
+        let vbo = Buffer::new()?;
+        vbo.bind(BufferType::Array);
+        vbo.data::<f32>(BufferType::Array, &vertices, gl::STATIC_DRAW);
+
+        let vertex_shader = Shader::new(&CANVAS_VERT_SHADER, gl::VERTEX_SHADER)?;
+        let fragment_shader = Shader::new(&CANVAS_FRAG_SHADER, gl::FRAGMENT_SHADER)?;
+        let program = Program::new(&[vertex_shader, fragment_shader])?;
+        program.use_program();
+
+        let pos_attrib = vao.get_attrib_location(&program, "position");
+        let col_attrib = vao.get_attrib_location(&program, "vertex_color");
+        let tex_coord_attrib = vao.get_attrib_location(&program, "tex_coord");
+
+        vao.enable_vertex_attrib(pos_attrib as u32);
+        vao.enable_vertex_attrib(col_attrib as u32);
+        vao.enable_vertex_attrib(tex_coord_attrib as u32);
+
+        vao.vertex_attrib_pointer::<f32>(pos_attrib as u32, 2, gl::FLOAT, false, 8, 0);
+        vao.vertex_attrib_pointer::<f32>(col_attrib as u32, 4, gl::FLOAT, false, 8, 2);
+        vao.vertex_attrib_pointer::<f32>(tex_coord_attrib as u32, 2, gl::FLOAT, false, 8, 6);
+
+        vao.unbind();
+        vbo.unbind(BufferType::Array);
+
+        Ok(CanvasHandler {
+            vao,
+            vertex_num,
+            background,
+            program,
+            aspect_ratio,
+            texture
+        })
+    }
+}
+
+
+impl WindowHandler for CanvasHandler {
+    fn on_draw(&mut self) -> HandlerResult<()> {
+        unsafe {
+            // gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
+            let aspect_ratio_uniform = Uniform::new(&self.program, "aspect_ratio")?;
+            aspect_ratio_uniform.uniform1f(self.aspect_ratio);
+            gl::ClearColor(self.background.0, self.background.1, self.background.2, 1.0);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+            self.texture.bind();
+            self.vao.bind();
+            gl::DrawArrays(gl::TRIANGLES, 0, self.vertex_num as i32);
+            self.vao.unbind();
+            self.texture.unbind();
+        }
+        Ok(())
     }
 }

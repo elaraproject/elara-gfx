@@ -66,6 +66,12 @@ pub trait WindowHandler {
     // on_click(), on_cursor_move() for handling on non-draw events
 }
 
+pub trait Draw {
+    fn draw(&mut self, win: &GLWindow) -> Result<Canvas, String> {
+        Ok(Canvas::new(win))
+    }
+}
+
 #[derive(Debug)]
 pub struct GLWindowHandler {
     event_loop: EventLoop<()>,
