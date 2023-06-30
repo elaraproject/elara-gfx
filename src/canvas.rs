@@ -7,6 +7,7 @@ pub const ATLAS_WIDTH_BLACK: f32 = 358.0;
 pub const ATLAS_HEIGHT_BLACK: f32 = 133.0;
 pub const ATLAS_WIDTH_WHITE: f32 = 353.0;
 pub const ATLAS_HEIGHT_WHITE: f32 = 134.0;
+pub const ATLAS_FONT_SIZE: i32 = 32;
 pub const ATLAS_CHARS: [char; 95] = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' ', '!', '\"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~'
 ];
@@ -218,7 +219,7 @@ uniform float aspect_ratio;
 void main() {
     VertexColor = vertex_color;
     TexCoord = tex_coord;
-    gl_Position = vec4(position.x * aspect_ratio, position.y, 0.0, 1.0);
+    gl_Position = vec4(position.x, position.y, 0.0, 1.0);
 }
 "#;
 
@@ -471,30 +472,58 @@ impl Canvas {
     }
 
     pub fn add_text(&mut self, x0: f32, y0: f32, text: &str, size: f32, white_text: bool) {
-        let mut x = x0;
-        let y = y0;
+        let ATLAS_WIDTH = if white_text { ATLAS_WIDTH_WHITE } else { ATLAS_WIDTH_BLACK };
+        let ATLAS_HEIGHT = if white_text { ATLAS_HEIGHT_WHITE } else { ATLAS_HEIGHT_BLACK };
+        let mut total_advance = 0;
         for char in text.chars() {
             let character_tex = get_charcoord_from_char(char, white_text).unwrap();
-            let ATLAS_WIDTH = if white_text { ATLAS_WIDTH_WHITE } else { ATLAS_WIDTH_BLACK };
-            let ATLAS_HEIGHT = if white_text { ATLAS_HEIGHT_WHITE } else { ATLAS_HEIGHT_BLACK };
+            total_advance += character_tex.advance;
+        }
+        let mut x = -total_advance as f32 / 2.0;
+        let y = ATLAS_FONT_SIZE as f32 / 2.0;
+        for char in text.chars() {
+            // p2, p3, p1, p3, p4, p1
+            // p1, p3, p0, p3, p4, p0
+            let character_tex = get_charcoord_from_char(char, white_text).unwrap();
             // Top left (x, y+h)
+            let x0 = (x - character_tex.originX as f32) / ATLAS_WIDTH; // p1
+            let y0 = (y - character_tex.originY as f32) / ATLAS_HEIGHT;
             let s0 = character_tex.x as f32 / ATLAS_WIDTH;
-            let t0 = (character_tex.y + character_tex.h) as f32 / ATLAS_HEIGHT;
+            let t0 = character_tex.y as f32 / ATLAS_HEIGHT;
             // Top right (x+h, y+h)
+            let x1 = (x - character_tex.originX as f32 + character_tex.w as f32) / ATLAS_WIDTH; // p2
+            let y1 = (y - character_tex.originY as f32) / ATLAS_HEIGHT;
             let s1 = (character_tex.x + character_tex.w) as f32 / ATLAS_WIDTH;
-            let t1 = (character_tex.y + character_tex.h) as f32 / ATLAS_HEIGHT;
+            let t1 = character_tex.y as f32 / ATLAS_HEIGHT;
             // Bottom right (x+h, y)
-            let s2 = (character_tex.x + character_tex.w) as f32 / ATLAS_WIDTH;
-            let t2 = character_tex.y as f32 / ATLAS_HEIGHT;
+            let x2 = (x - character_tex.originX as f32) / ATLAS_WIDTH; // p4
+            let y2 = (y - character_tex.originY as f32 + character_tex.h as f32) / ATLAS_HEIGHT;
+            let s2 = character_tex.x as f32 / ATLAS_WIDTH;
+            let t2 = (character_tex.y + character_tex.h) as f32 / ATLAS_HEIGHT;
             // Bottom left (x, y)
-            let s3 = character_tex.x as f32 / ATLAS_WIDTH;
-            let t3 = character_tex.y as f32 / ATLAS_HEIGHT;
+            let x3 = (x - character_tex.originX as f32 + character_tex.w as f32) / ATLAS_WIDTH; // p3
+            let y3 = (y - character_tex.originY as f32 + character_tex.h as f32) / ATLAS_HEIGHT;
+            let s3 = (character_tex.x + character_tex.w) as f32 / ATLAS_WIDTH;
+            let t3 = (character_tex.y + character_tex.h) as f32 / ATLAS_HEIGHT;
+
+            let p1 = [x0, y0, 1.0, 1.0, 1.0, 0.0, s0, t0];
+            let p2 = [x1, y1, 1.0, 1.0, 1.0, 0.0, s1, t1];
+            let p3 = [x3, y3, 1.0, 1.0, 1.0, 0.0, s3, t3];
+            let p4 = [x0, y0, 1.0, 1.0, 1.0, 0.0, s0, t0];
+            let p5 = [x3, y3, 1.0, 1.0, 1.0, 0.0, s3, t3];
+            let p6 = [x2, y2, 1.0, 1.0, 1.0, 0.0, s2, t2];
             // Texcoords
-            let texcoords = [s0, t0, s1, t1, s2, t2, s3, t3];
-            let w = (character_tex.w as f32 * size * 0.03) / (ATLAS_WIDTH * self.aspect_ratio);
-            let h = (character_tex.h as f32 * size * 0.03) / ATLAS_HEIGHT;
-            self.add_image(x, y, w, h, texcoords);
-            x += (character_tex.advance as f32 * size * 0.03) / (ATLAS_WIDTH * self.aspect_ratio);
+            // let texcoords = [s0, t0, s1, t1, s2, t2, s3, t3];
+            // let w = (character_tex.w as f32 * size * 0.03) / (ATLAS_WIDTH * self.aspect_ratio);
+            // let h = (character_tex.h as f32 * size * 0.03) / ATLAS_HEIGHT;
+            // let w = character_tex.w as f32 / ATLAS_WIDTH;
+            // let h = character_tex.h as f32 / ATLAS_HEIGHT;
+            // self.add_image(x - character_tex.originX as f32 / ATLAS_WIDTH, y / ATLAS_HEIGHT, w, h, texcoords);
+            // x += (character_tex.advance as f32 * size * 0.03) / (ATLAS_WIDTH * self.aspect_ratio);
+            // p1, p3, p0, p3, p4, p0
+            x += character_tex.advance as f32;
+            let text_quads = vec![p1, p2, p3, p4, p5, p6];
+            self.add_shape(text_quads);
         }
     }
 
@@ -534,8 +563,10 @@ impl CanvasHandler {
 
         let texture = Texture2D::new()?;
         texture.bind();
-        texture.parameter_2d(gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-        texture.parameter_2d(gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        texture.parameter_2d(gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+        texture.parameter_2d(gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+        texture.parameter_2d(gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+        texture.parameter_2d(gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
         texture.enable_alpha_blend();
 
         texture.set_image_2d(img);
