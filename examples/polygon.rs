@@ -23,7 +23,7 @@ impl Draw for CanvasContext {
         canvas.add_line(vec![[0.0, 0.9], [0.2, 0.8], [0.5, 0.6], [0.8, 0.5], [0.9, 0.3]], 2.0, Color(0, 122, 122, 1.0), false);
         canvas.add_quad([0.0, -0.5], [0.7, -0.5], [0.5, -0.8], [0.0, -0.6], Color(76, 102, 122, 1.0));
         canvas.add_heart(0.8, 0.0, 0.5, Color(255, 20, 193, 1.0));
-        canvas.add_text(-0.5, 0.0, "Hello World!", 16.0);
+        canvas.add_text(-0.5, 0.0, "Hello World!", 16.0, false);
         Ok(canvas)
     }
 }
