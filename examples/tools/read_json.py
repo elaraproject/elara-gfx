@@ -1,8 +1,9 @@
 import json
+import sys
 
 font = ""
 
-with open("font.json", "r") as f:
+with open(sys.argv[1], "r") as f:
     font = f.read()
 
 font = json.loads(font)
