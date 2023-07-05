@@ -416,6 +416,30 @@ impl Buffer {
             )
         }
     }
+
+    // Binds a buffer object and allocates memory without copying
+    // data to buffer
+    pub fn data_empty<T>(&self, buffer_type: BufferType, size: usize, usage: types::GLenum) {
+        unsafe {
+            gl::BufferData(
+                buffer_type as types::GLenum,
+                (size * std::mem::size_of::<T>()) as types::GLsizeiptr,
+                std::ptr::null(),
+                usage
+            )
+        }
+    }
+
+    pub fn subdata<T>(&self, buffer_type: BufferType, offset: isize, data: &[T]) {
+        unsafe {
+            gl::BufferSubData(
+                buffer_type as types::GLenum,
+                offset,
+                std::mem::size_of_val(&data) as isize,
+                data.as_ptr() as *const types::c_void
+            )
+        }
+    }
 }
 
 pub struct Uniform(pub types::GLint);
@@ -440,6 +464,12 @@ impl Uniform {
     pub fn uniform2f(&self, val_a: f32, val_b: f32) {
         unsafe {
             gl::Uniform2f(self.0, val_a, val_b);
+        }
+    }
+
+    pub fn uniform3f(&self, val_a: f32, val_b: f32, val_c: f32) {
+        unsafe {
+            gl::Uniform3f(self.0, val_a, val_b, val_c);
         }
     }
 }
