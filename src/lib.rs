@@ -57,6 +57,12 @@ pub fn gl_info() {
 // Temporary: all WindowHandler errors use strings
 pub type HandlerResult<T> = Result<T, String>;
 
+// Temporary: type for defining pointer-obtainable types
+pub trait PointerType: Sized {
+    type CType;
+    fn as_ptr(&self) -> *mut Self::CType;
+}
+
 pub trait WindowHandler {
     fn on_draw(&mut self) -> HandlerResult<()> {
         Ok(())
@@ -430,12 +436,13 @@ impl Buffer {
         }
     }
 
-    pub fn subdata<T>(&self, buffer_type: BufferType, offset: isize, data: &[T]) {
+    pub fn subdata<T, const N: usize>(&self, buffer_type: BufferType, offset: isize, data: &[T; N]) 
+    {
         unsafe {
             gl::BufferSubData(
                 buffer_type as types::GLenum,
                 offset,
-                std::mem::size_of_val(&data) as isize,
+                std::mem::size_of::<[T; N]>() as isize,
                 data.as_ptr() as *const types::c_void
             )
         }
@@ -607,6 +614,12 @@ impl Program {
     pub fn id(&self) -> types::GLuint {
         self.id
     }
+
+    pub fn delete(&self) {
+        unsafe {
+            gl::DeleteProgram(self.id);
+        }
+    }
 }
 
 fn set_attribute(
@@ -632,14 +645,6 @@ fn set_attribute(
             ptr as *const types::c_void,
         );
         gl::EnableVertexAttribArray(attrib as types::GLuint);
-    }
-}
-
-impl Drop for Program {
-    fn drop(&mut self) {
-        unsafe {
-            gl::DeleteProgram(self.id);
-        }
     }
 }
 
