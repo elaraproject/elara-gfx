@@ -124,13 +124,14 @@ impl GLWindowHandler {
                     control_flow.set_exit();
                 }
                 Event::MainEventsCleared => {
+                }
+                Event::RedrawRequested(_) => {
                     // Render function
                     window.make_current();
                     handler.on_draw().unwrap();
                     window.swap_buffers();
                     window.make_not_current();
                 }
-                Event::RedrawRequested(_) => {}
                 _ => {}
             }
         });
