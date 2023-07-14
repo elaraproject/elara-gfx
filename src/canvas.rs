@@ -780,6 +780,11 @@ impl RectStyle {
         self
     }
 
+    pub fn line_thickness(mut self, thickness: f32) -> Self {
+        self.h = thickness;
+        self
+    }
+
     pub fn rect_color(mut self, color: Color) -> Self {
         self.rect_color = color;
         self
