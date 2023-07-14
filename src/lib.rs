@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use canvas::Canvas;
 pub use gl;
 use raw_gl_context::{GlConfig, GlContext};
 use std::ffi::{CStr, CString};
@@ -14,8 +15,7 @@ use elara_log::prelude::*;
 use error::*;
 mod image;
 pub use image::PixelArray;
-mod canvas;
-pub use canvas::*;
+pub mod canvas;
 
 // NOTE: elara-gfx uses elara-log internally to log
 // errors, if elara-log is not initialized
@@ -53,6 +53,26 @@ pub fn gl_info() {
         info!("[elara-gfx] GLSL Version: {}", glsl_version_str);
     }
 }
+
+pub fn check_gl_error() {
+    let error_code = unsafe { gl::GetError() };
+    if error_code != gl::NO_ERROR {
+        let error_str = match error_code {
+            gl::INVALID_ENUM => "Invalid enum",
+            gl::INVALID_VALUE => "Invalid value",
+            gl::INVALID_OPERATION => "Invalid operation",
+            gl::STACK_OVERFLOW => "Stack overflow",
+            gl::STACK_UNDERFLOW => "Stack underflow",
+            gl::OUT_OF_MEMORY => "Out of memory",
+            gl::INVALID_FRAMEBUFFER_OPERATION => "Invalid framebuffer operation",
+            _ => "Unknown GL error"
+        };
+        error!("{:?} | {}:{}", error_str, file!(), line!());
+    } else {
+        info!("No errors detected");
+    }
+}
+
 
 // Temporary: all WindowHandler errors use strings
 pub type HandlerResult<T> = Result<T, String>;
