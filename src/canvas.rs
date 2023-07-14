@@ -1,5 +1,36 @@
+use std::collections::HashMap;
 use std::f32::consts::PI;
 use crate::{GLWindow, VertexArray, Texture2D, Program, Draw, PixelArray, WindowHandler, Buffer, BufferType, Shader, HandlerResult, Uniform};
+use crate::types;
+use std::ffi::OsStr;
+use freetype::Library;
+use freetype::face::LoadFlag;
+
+const TEXT_VERTEX_SHADER: &'static str = r#"
+#version 330 core
+in vec4 vertex;
+out vec2 TexCoord;
+
+void main() {
+    gl_Position = vec4(vertex.xy, 0.0, 1.0);
+    TexCoord = vertex.zw;
+}
+"#;
+
+const TEXT_FRAGMENT_SHADER: &'static str = r#"
+#version 330 core
+in vec2 TexCoord;
+out vec4 FragColor;
+
+uniform sampler2D text;
+uniform vec3 textColor;
+
+void main() {
+    vec4 sampled = vec4(1.0, 1.0, 1.0, texture(text, TexCoord).r);
+    FragColor = vec4(textColor, 1.0) * sampled;
+}
+"#;
+
 
 pub const ATLAS_IMG_BLACK: &[u8] = include_bytes!("resources/font-tex.png");
 pub const ATLAS_IMG_WHITE: &[u8] = include_bytes!("resources/font-tex-white.png");
@@ -479,28 +510,31 @@ impl Canvas {
             let character_tex = get_charcoord_from_char(char, white_text).unwrap();
             total_advance += character_tex.advance;
         }
-        let mut x = -total_advance as f32 / 2.0;
-        let y = ATLAS_FONT_SIZE as f32 / 2.0;
+        let mut x = -(total_advance as f32 / 2.0);
+        let y = (ATLAS_FONT_SIZE as f32 / 2.0);
         for char in text.chars() {
-            // p2, p3, p1, p3, p4, p1
-            // p1, p3, p0, p3, p4, p0
+            // p0 --- p1
+            // | \     |
+            // |   \   |
+            // |     \ |
+            // p2 --- p3
             let character_tex = get_charcoord_from_char(char, white_text).unwrap();
-            // Top left (x, y+h)
+            // Top left
             let x0 = (x - character_tex.originX as f32) / ATLAS_WIDTH; // p1
             let y0 = (y - character_tex.originY as f32) / ATLAS_HEIGHT;
             let s0 = character_tex.x as f32 / ATLAS_WIDTH;
             let t0 = character_tex.y as f32 / ATLAS_HEIGHT;
-            // Top right (x+h, y+h)
+            // Top right
             let x1 = (x - character_tex.originX as f32 + character_tex.w as f32) / ATLAS_WIDTH; // p2
             let y1 = (y - character_tex.originY as f32) / ATLAS_HEIGHT;
             let s1 = (character_tex.x + character_tex.w) as f32 / ATLAS_WIDTH;
             let t1 = character_tex.y as f32 / ATLAS_HEIGHT;
-            // Bottom right (x+h, y)
+            // Bottom left
             let x2 = (x - character_tex.originX as f32) / ATLAS_WIDTH; // p4
             let y2 = (y - character_tex.originY as f32 + character_tex.h as f32) / ATLAS_HEIGHT;
             let s2 = character_tex.x as f32 / ATLAS_WIDTH;
             let t2 = (character_tex.y + character_tex.h) as f32 / ATLAS_HEIGHT;
-            // Bottom left (x, y)
+            // Bottom right
             let x3 = (x - character_tex.originX as f32 + character_tex.w as f32) / ATLAS_WIDTH; // p3
             let y3 = (y - character_tex.originY as f32 + character_tex.h as f32) / ATLAS_HEIGHT;
             let s3 = (character_tex.x + character_tex.w) as f32 / ATLAS_WIDTH;
@@ -539,6 +573,303 @@ impl Canvas {
         vertices
     }
 }
+
+#[derive(Debug)]
+struct Character {
+    pub texture_id: i32,
+    pub size: (i32, i32),
+    pub bearing: (i32, i32),
+    pub advance: i32
+}
+
+impl Character {
+    fn new(texture_id: i32, size: (i32, i32), bearing: (i32, i32), advance: i32) -> Character {
+        Character { texture_id, size, bearing, advance }
+    }
+}
+
+pub struct TextRenderer {
+    program: Program,
+    vao: VertexArray,
+    vbo: Buffer,
+    characters: HashMap<char, Character>
+}
+
+impl TextRenderer {
+    pub fn new() -> Result<TextRenderer, String> {
+        let vertex_shader = Shader::new(&TEXT_VERTEX_SHADER, gl::VERTEX_SHADER)?;
+        let fragment_shader = Shader::new(&TEXT_FRAGMENT_SHADER, gl::FRAGMENT_SHADER)?;
+        let program = Program::new(&[vertex_shader, fragment_shader])?;
+
+        let vao = VertexArray::new()?;
+        let vbo = Buffer::new()?;
+        vao.bind();
+        vbo.bind(BufferType::Array);
+        vbo.data_empty::<f32>(BufferType::Array, 24, gl::DYNAMIC_DRAW);
+
+        let vertex_attrib = 0;
+        vao.enable_vertex_attrib(vertex_attrib as u32);
+        vao.vertex_attrib_pointer::<f32>(vertex_attrib as u32, 4, gl::FLOAT, false, 4, 0);
+
+        vbo.unbind(BufferType::Array);
+        vao.unbind();
+
+        let characters: HashMap<char, Character> = HashMap::new();
+        Ok(TextRenderer { program, vao, vbo, characters })
+    }
+
+    pub fn load<F: AsRef<OsStr>>(&mut self, font: F, size: u32) {
+        if !self.characters.is_empty() {
+            self.characters.clear();
+        }
+
+        let ft = Library::init().unwrap();
+        let face = ft.new_face(font, 0).unwrap();
+        face.set_pixel_sizes(0, size).unwrap();
+        unsafe {
+            gl::PixelStorei(gl::UNPACK_ALIGNMENT, 1);
+        }
+        // Enable blending
+        unsafe {
+            gl::Enable(gl::CULL_FACE);
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+        }
+
+        // Load first 128 characters of ASCII set
+        for c in 0..128 as u8 {
+            face.load_char(c as usize, LoadFlag::RENDER).unwrap();
+            unsafe {
+                let mut texture = 0;
+                gl::GenTextures(1, &mut texture);
+                gl::BindTexture(gl::TEXTURE_2D, texture);
+                gl::TexImage2D(
+                    gl::TEXTURE_2D,
+                    0,
+                    gl::RED as i32,
+                    face.glyph().bitmap().width(),
+                    face.glyph().bitmap().rows(),
+                    0,
+                    gl::RED,
+                    gl::UNSIGNED_BYTE,
+                    face.glyph().bitmap().buffer().as_ptr() as *const types::c_void
+                );
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+
+                let character = Character::new(
+                    texture as i32,
+                    (face.glyph().bitmap().width(), face.glyph().bitmap().rows()),
+                    (face.glyph().bitmap_left(), face.glyph().bitmap_top()),
+                    face.glyph().advance().x as i32
+                );
+
+                self.characters.insert(c as char, character);
+            }
+        }
+        unsafe {
+            gl::BindTexture(gl::TEXTURE_2D, 0);
+        }
+    }
+
+    pub fn render_text(&self, text: &str, x0: f32, y0: f32, scale: f32, color: Color) -> Result<(), String> {
+        let mut x = x0;
+        let y = y0;
+        self.program.use_program();
+        let color_uniform = Uniform::new(&self.program, "textColor")?;
+        color_uniform.uniform3f(color.0 as f32 / 255.0, color.1 as f32 / 255.0, color.2 as f32 / 255.0);
+        unsafe {
+            gl::ActiveTexture(gl::TEXTURE0);
+        }
+        self.vao.bind();
+        for c in text.chars() {
+            let ch = self.characters.get(&c).unwrap();
+            let xpos = (x + ch.bearing.0 as f32 * scale) / 1200.0;
+            let ypos = (y - (ch.size.1 as f32 - ch.bearing.1 as f32) * scale) / 900.0;
+            let w = (ch.size.0 as f32 * scale) / 1200.0;
+            let h = (ch.size.1 as f32 * scale) / 900.0;
+            let vertices: [f32; 24] = [
+                xpos,     ypos + h,   0.0_f32, 0.0,            
+                xpos,     ypos,       0.0,     1.0,
+                xpos + w, ypos,       1.0,     1.0,
+
+                xpos,     ypos + h,   0.0,     0.0,
+                xpos + w, ypos,       1.0,     1.0,
+                xpos + w, ypos + h,   1.0,     0.0  
+            ];
+            unsafe {
+                gl::BindTexture(gl::TEXTURE_2D, ch.texture_id as u32);
+                self.vbo.bind(BufferType::Array);
+                self.vbo.subdata(BufferType::Array, 0, &vertices);
+                self.vbo.unbind(BufferType::Array);
+                gl::DrawArrays(gl::TRIANGLES, 0, 6);
+                x += (ch.advance >> 6) as f32 * scale;
+            }
+        }
+        self.vao.unbind();
+        unsafe {
+            gl::BindTexture(gl::TEXTURE_2D, 0);
+        }
+        Ok(())
+    }
+}
+
+const RECT_VERTEX_SHADER: &'static str = r#"
+#version 330 core
+in vec2 position;
+
+void main() {
+    gl_Position = vec4(position, 0.0, 1.0);
+}
+"#;
+
+const RECT_FRAGMENT_SHADER: &'static str = r#"
+#version 330 core
+uniform vec2 location; // location of the bottom left corner of rect
+uniform vec2 size; // size of the rect in pixels
+uniform vec3 rectColor; // rectangle color
+uniform vec3 borderColor; // border color
+uniform float borderThickness; // border thickness in pixels
+uniform float borderRadius; // border radius in pixels
+
+out vec4 fragColor;
+
+// Based off https://www.shadertoy.com/view/fsdyzB
+float roundedBoxSDF(vec2 CenterPosition, vec2 Size, float Radius) {
+    vec2 q = abs(CenterPosition)-Size+Radius;
+    return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - Radius;
+}
+
+void main() {
+    float borderSoftness = 2.0;
+    float edgeSoftness = 2.0;
+    float distance = roundedBoxSDF(gl_FragCoord.xy - location - (size / 2.0), (size / 2.0), borderRadius);
+    float smoothedAlpha = 1.0 - smoothstep(0.0, edgeSoftness, distance);
+    float borderAlpha = 1.0 - smoothstep(borderThickness - borderSoftness, borderThickness, abs(distance));
+    fragColor = vec4(mix(rectColor, borderColor, min(borderAlpha, smoothedAlpha)), smoothedAlpha);
+}
+"#;
+
+pub struct RectStyle {
+    x0: f32,
+    y0: f32,
+    w: f32,
+    h: f32,
+    rect_color: Color,
+    border_color: Color,
+    border_thickness: f32,
+    border_radius: f32
+}
+
+impl RectStyle {
+    pub fn new() -> RectStyle {
+        RectStyle { x0: 50.0, y0: 50.0, w: 150.0, h: 50.0, rect_color: Color(255, 255, 255, 1.0), border_color: Color(0, 0, 0, 1.0), border_thickness: 0.0, border_radius: 0.0 }
+    }
+
+    pub fn position(mut self, x0: f32, y0: f32) -> Self {
+        self.x0 = x0;
+        self.y0 = y0;
+        self
+    }
+
+    pub fn dims(mut self, w: f32, h: f32) -> Self {
+        self.w = w;
+        self.h = h;
+        self
+    }
+
+    pub fn rect_color(mut self, color: Color) -> Self {
+        self.rect_color = color;
+        self
+    }
+
+    pub fn border_color(mut self, color: Color) -> Self {
+        self.border_color = color;
+        self
+    }
+
+    pub fn border_thickness(mut self, thickness: f32) -> Self {
+        self.border_thickness = thickness;
+        self
+    }
+
+    pub fn border_radius(mut self, radius: f32) -> Self {
+        self.border_radius = radius;
+        self
+    }
+}
+
+pub struct RectRenderer {
+    program: Program,
+    vao: VertexArray,
+    vbo: Buffer,
+}
+
+impl RectRenderer {
+    pub fn new() -> Result<RectRenderer, String> {
+        // Enable blending
+        unsafe {
+            gl::Enable(gl::CULL_FACE);
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+        }
+
+        let vertex_shader = Shader::new(&RECT_VERTEX_SHADER, gl::VERTEX_SHADER)?;
+        let fragment_shader = Shader::new(&RECT_FRAGMENT_SHADER, gl::FRAGMENT_SHADER)?;
+        let program = Program::new(&[vertex_shader, fragment_shader])?;
+
+        let vao = VertexArray::new()?;
+        let vbo = Buffer::new()?;
+        vao.bind();
+        vbo.bind(BufferType::Array);
+        vbo.data_empty::<f32>(BufferType::Array, 12, gl::DYNAMIC_DRAW);
+
+        let vertex_attrib = vao.get_attrib_location(&program, "position");
+        vao.enable_vertex_attrib(vertex_attrib as u32);
+        vao.vertex_attrib_pointer::<f32>(vertex_attrib as u32, 2, gl::FLOAT, false, 2, 0);
+
+        vbo.unbind(BufferType::Array);
+        vao.unbind();
+
+        Ok(RectRenderer { program, vao, vbo })
+    }
+
+    pub fn render_rect(&self, style: RectStyle) -> Result<(), String> {
+        self.program.use_program();
+        let location_uniform = Uniform::new(&self.program, "location")?;
+        location_uniform.uniform2f(style.x0, style.y0);
+        let size_uniform = Uniform::new(&self.program, "size")?;
+        size_uniform.uniform2f(style.w, style.h);
+        let color_uniform = Uniform::new(&self.program, "rectColor")?;
+        color_uniform.uniform3f(style.rect_color.0 as f32 / 255.0, style.rect_color.1 as f32 / 255.0, style.rect_color.2 as f32 / 255.0);
+        let border_color_uniform = Uniform::new(&self.program, "borderColor")?;
+        border_color_uniform.uniform3f(style.border_color.0 as f32 / 255.0, style.border_color.1 as f32 / 255.0, style.border_color.2 as f32 / 255.0);
+        let border_thickness_uniform = Uniform::new(&self.program, "borderThickness")?;
+        border_thickness_uniform.uniform1f(style.border_thickness);
+        let border_radius_uniform = Uniform::new(&self.program, "borderRadius")?;
+        border_radius_uniform.uniform1f(style.border_radius);
+        self.vao.bind();
+        let vertices: [f32; 12] = [
+            -1.0, 1.0,            
+            -1.0, -1.0,    
+            1.0, -1.0,    
+
+            -1.0, 1.0,
+            1.0, -1.0,    
+            1.0, 1.0, 
+        ];
+        self.vbo.bind(BufferType::Array);
+        self.vbo.subdata(BufferType::Array, 0, &vertices);
+        self.vbo.unbind(BufferType::Array);
+        unsafe {
+            gl::DrawArrays(gl::TRIANGLES, 0, 6);
+        }
+        Ok(())
+    }
+}
+
 
 pub struct CanvasHandler {
     vao: VertexArray,
