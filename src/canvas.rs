@@ -267,6 +267,13 @@ void main() {
 }
 "#;
 
+pub fn clear_color(color: Color) {
+    unsafe {
+        gl::ClearColor(color.0 as f32 / 255.0, color.1 as f32 / 255.0, color.2 as f32 / 255.0, 1.0);
+        gl::Clear(gl::COLOR_BUFFER_BIT);
+    }
+}
+
 pub fn get_charcoord_from_char(character: char, white_text: bool) -> Option<CharCoord> {
     let index = ATLAS_CHARS.iter().position(|&c| c == character);
     let ATLAS = if white_text { ATLAS_WHITE } else { ATLAS_BLACK };
@@ -774,9 +781,9 @@ impl RectStyle {
         self
     }
 
-    pub fn dims(mut self, w: f32, h: f32) -> Self {
-        self.w = w;
-        self.h = h;
+    pub fn dims(mut self, w: u32, h: u32) -> Self {
+        self.w = w as f32;
+        self.h = h as f32;
         self
     }
 
@@ -785,13 +792,13 @@ impl RectStyle {
         self
     }
 
-    pub fn rect_color(mut self, color: Color) -> Self {
-        self.rect_color = color;
+    pub fn rect_color(mut self, r: i32, g: i32, b: i32) -> Self {
+        self.rect_color = Color(r, g, b, 1.0);
         self
     }
 
-    pub fn border_color(mut self, color: Color) -> Self {
-        self.border_color = color;
+    pub fn border_color(mut self, r: i32, g: i32, b: i32) -> Self {
+        self.border_color = Color(r, g, b, 1.0);
         self
     }
 
