@@ -1,6 +1,7 @@
 // This demo shows how to draw polygons and other shapes
 // using elara-gfx
-use elara_gfx::{gl_info, Canvas, Color, Draw, CanvasHandler, GLWindow};
+use elara_gfx::{gl_info, Draw, GLWindow};
+use elara_gfx::canvas::{Canvas, CanvasHandler, Color};
 use elara_log::prelude::*;
 use std::error::Error;
 
