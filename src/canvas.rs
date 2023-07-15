@@ -882,6 +882,122 @@ impl RectRenderer {
     }
 }
 
+const LINE_VERTEX_SHADER: &'static str = r#"
+#version 330 core
+in vec2 position;
+
+void main() {
+    gl_Position = vec4(position, 0.0, 1.0);
+}
+"#;
+
+const LINE_FRAGMENT_SHADER: &'static str = r#"
+#version 330 core
+uniform vec2 startLocation;
+uniform vec2 endLocation;
+uniform float thickness;
+uniform vec3 lineColor;
+
+out vec4 fragColor;
+
+// source: https://computergraphics.stackexchange.com/questions/10682/what-is-the-most-efficient-line-algorithm-using-a-shader-program
+float lineSegmentSDF(vec2 p, vec2 a, vec2 b)
+{
+   vec2 ba = b-a;
+   vec2 pa = p-a;
+   float h = clamp(dot(pa,ba)/dot(ba,ba), 0.0, 1.0);
+   vec2 sqrd = pa-h*ba;
+   sqrd = sqrd * sqrd;
+   return sqrd.x+sqrd.y;
+}
+
+void main()
+{
+    // compute SDF
+    float distance = lineSegmentSDF(gl_FragCoord.xy, startLocation, endLocation) - thickness;
+    float edgeSoftness = 2.0;
+    float smoothedAlpha = 1.0 - smoothstep(0.0, edgeSoftness, distance);
+    fragColor = vec4(lineColor, smoothedAlpha);
+}
+"#;
+
+pub struct LineRenderer {
+    program: Program,
+    vao: VertexArray,
+    vbo: Buffer,
+}
+
+impl LineRenderer {
+    pub fn new() -> Result<LineRenderer, String> {
+        // Enable blending
+        unsafe {
+            gl::Enable(gl::CULL_FACE);
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+        }
+
+        let vertex_shader = Shader::new(&LINE_VERTEX_SHADER, gl::VERTEX_SHADER)?;
+        let fragment_shader = Shader::new(&LINE_FRAGMENT_SHADER, gl::FRAGMENT_SHADER)?;
+        let program = Program::new(&[vertex_shader, fragment_shader])?;
+
+        let vao = VertexArray::new()?;
+        let vbo = Buffer::new()?;
+        vao.bind();
+        vbo.bind(BufferType::Array);
+        vbo.data_empty::<f32>(BufferType::Array, 12, gl::DYNAMIC_DRAW);
+
+        let vertex_attrib = vao.get_attrib_location(&program, "position");
+        vao.enable_vertex_attrib(vertex_attrib as u32);
+        vao.vertex_attrib_pointer::<f32>(vertex_attrib as u32, 2, gl::FLOAT, false, 2, 0);
+
+        vbo.unbind(BufferType::Array);
+        vao.unbind();
+        Ok(LineRenderer{ program, vao, vbo })
+    }
+
+    // Render a line with start point p1 and end point p2;
+    // it is recommended to use render_horizontal_line()
+    // or render_vertical_line() instead
+    pub fn render_line(&self, p1: [f32; 2], p2: [f32; 2], thickness: f32, color: Color) -> Result<(), String> {
+        self.program.use_program();
+        let start_location_uniform = Uniform::new(&self.program, "startLocation")?;
+        start_location_uniform.uniform2f(p1[0], p1[1]);
+        let end_location_uniform = Uniform::new(&self.program, "endLocation")?;
+        end_location_uniform.uniform2f(p2[0], p2[1]);
+        let thickness_uniform = Uniform::new(&self.program, "thickness")?;
+        thickness_uniform.uniform1f(thickness);
+        let color_uniform = Uniform::new(&self.program, "lineColor")?;
+        color_uniform.uniform3f(color.0 as f32 / 255.0, color.1 as f32 / 255.0, color.2 as f32 / 255.0);
+
+        self.vao.bind();
+        let vertices: [f32; 12] = [
+            -1.0, 1.0,            
+            -1.0, -1.0,    
+            1.0, -1.0,    
+
+            -1.0, 1.0,
+            1.0, -1.0,    
+            1.0, 1.0, 
+        ];
+        self.vbo.bind(BufferType::Array);
+        self.vbo.subdata(BufferType::Array, 0, &vertices);
+        self.vbo.unbind(BufferType::Array);
+        unsafe {
+            gl::DrawArrays(gl::TRIANGLES, 0, 6);
+        }
+        Ok(())
+    }
+
+    // Renders a vertical line with bottom at (x0, y0) and a height of h
+    pub fn render_vertical_line(&self, x0: i32, y0: i32, h: i32, thickness: f32, color: Color) -> Result<(), String> {
+        self.render_line([x0 as f32, y0 as f32], [x0 as f32, (y0 + h) as f32], thickness, color)
+    }
+    
+    // Renders a horizontal line with left at (x0, y0) and a height of h
+    pub fn render_horizontal_line(&self, x0: i32, y0: i32, w: i32, thickness: f32, color: Color) -> Result<(), String> {
+        self.render_line([x0 as f32, y0 as f32], [(x0 + w) as f32, y0 as f32], thickness, color)
+    }
+}
 
 pub struct CanvasHandler {
     vao: VertexArray,
