@@ -1,13 +1,14 @@
 // This demo renders a basic UI with elara-gfx
 use elara_gfx::{gl_info, GLWindow, WindowHandler};
-use elara_gfx::canvas::{clear_color, TextRenderer, RectRenderer, RectStyle, Color};
+use elara_gfx::canvas::{clear_color, TextRenderer, RectRenderer, RectStyle, LineRenderer, Color};
 use elara_log::prelude::*;
 use std::error::Error;
 use std::time::Instant;
 
 struct Handler {
     text_renderer: TextRenderer,
-    rect_renderer: RectRenderer
+    rect_renderer: RectRenderer,
+    line_renderer: LineRenderer
 }
 
 impl Handler {
@@ -15,7 +16,8 @@ impl Handler {
         let mut text_renderer = TextRenderer::new()?;
         text_renderer.load("resources/OpenSans-Regular.ttf", 32);
         let rect_renderer = RectRenderer::new()?;
-        Ok(Handler{ text_renderer, rect_renderer })
+        let line_renderer = LineRenderer::new()?;
+        Ok(Handler{ text_renderer, rect_renderer, line_renderer })
     }
 }
 
@@ -49,34 +51,19 @@ impl WindowHandler for Handler {
             .position(640.0, 870.0)
             .border_radius(5.0))?;
         self.text_renderer.render_text("9", -210.0, 420.0, 1.0, Color(107, 110, 120, 1.0))?;
-        self.rect_renderer.render_rect(RectStyle::new()
-            .dims(380, 0)
-            .rect_color(42, 46, 53)
-            .position(330.0, 850.0))?;
+        self.line_renderer.render_horizontal_line(330, 850, 370, 1.0, Color(42, 46, 53, 1.0))?;
         self.text_renderer.render_text("Coordinate frames", -700.0, 300.0, 1.0, Color(255, 255, 255, 1.0))?;
         self.text_renderer.render_text("+", -210.0, 300.0, 1.0, Color(255, 255, 255, 1.0))?;
-        self.rect_renderer.render_rect(RectStyle::new()
-            .dims(380, 0)
-            .rect_color(42, 46, 53)
-            .position(330.0, 770.0))?;
+        self.line_renderer.render_horizontal_line(330, 770, 370, 1.0, Color(42, 46, 53, 1.0))?;
         self.text_renderer.render_text("CAD matches", -700.0, 180.0, 1.0, Color(255, 255, 255, 1.0))?;
         self.text_renderer.render_text("+", -210.0, 180.0, 1.0, Color(255, 255, 255, 1.0))?;
-        self.rect_renderer.render_rect(RectStyle::new()
-            .dims(380, 0)
-            .rect_color(42, 46, 53)
-            .position(330.0, 690.0))?;
+        self.line_renderer.render_horizontal_line(330, 690, 370, 1.0, Color(42, 46, 53, 1.0))?;
         self.text_renderer.render_text("Grasps", -700.0, 60.0, 1.0, Color(255, 255, 255, 1.0))?;
         self.text_renderer.render_text("+", -210.0, 60.0, 1.0, Color(255, 255, 255, 1.0))?;
-        self.rect_renderer.render_rect(RectStyle::new()
-            .dims(380, 0)
-            .rect_color(42, 46, 53)
-            .position(330.0, 610.0))?;
+        self.line_renderer.render_horizontal_line(330, 610, 370, 1.0, Color(42, 46, 53, 1.0))?;
         self.text_renderer.render_text("Gripper", -700.0, -60.0, 1.0, Color(255, 255, 255, 1.0))?;
         self.text_renderer.render_text("+", -210.0, -60.0, 1.0, Color(255, 255, 255, 1.0))?;
-        self.rect_renderer.render_rect(RectStyle::new()
-            .dims(380, 0)
-            .rect_color(42, 46, 53)
-            .position(330.0, 530.0))?;
+        self.line_renderer.render_horizontal_line(330, 530, 370, 1.0, Color(42, 46, 53, 1.0))?;
         info!("Render time is {:?}", now.elapsed());
         Ok(())
     }
