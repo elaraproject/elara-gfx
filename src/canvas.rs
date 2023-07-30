@@ -238,6 +238,12 @@ pub const ATLAS_BLACK: [CharCoord; 95] = [
     CharCoord {  x: 145, y: 114, w: 18, h: 7, originX: 0, originY: 15, advance: 18 },
 ];
 
+fn convert_ranges(value: f32, old_min: f32, old_max: f32, new_min: f32, new_max: f32) -> f32 {
+    let old_range = old_max - old_min;
+    let new_range = new_max - new_min;  
+    (((value - old_min) * new_range) / old_range) + new_min
+}
+
 const CANVAS_VERT_SHADER: &'static str = r#"
 #version 330 core
 in vec2 position;
@@ -596,6 +602,8 @@ impl Character {
 }
 
 pub struct TextRenderer {
+    win_width: i32,
+    win_height: i32,
     program: Program,
     vao: VertexArray,
     vbo: Buffer,
@@ -603,7 +611,8 @@ pub struct TextRenderer {
 }
 
 impl TextRenderer {
-    pub fn new() -> Result<TextRenderer, String> {
+    pub fn new(win: &GLWindow) -> Result<TextRenderer, String> {
+        let (win_width, win_height) = (win.width, win.height);
         let vertex_shader = Shader::new(&TEXT_VERTEX_SHADER, gl::VERTEX_SHADER)?;
         let fragment_shader = Shader::new(&TEXT_FRAGMENT_SHADER, gl::FRAGMENT_SHADER)?;
         let program = Program::new(&[vertex_shader, fragment_shader])?;
@@ -622,7 +631,7 @@ impl TextRenderer {
         vao.unbind();
 
         let characters: HashMap<char, Character> = HashMap::new();
-        Ok(TextRenderer { program, vao, vbo, characters })
+        Ok(TextRenderer { win_width, win_height, program, vao, vbo, characters })
     }
 
     pub fn load<F: AsRef<OsStr>>(&mut self, font: F, size: u32) {
@@ -681,9 +690,10 @@ impl TextRenderer {
         }
     }
 
-    pub fn render_text(&self, text: &str, x0: f32, y0: f32, scale: f32, color: Color) -> Result<(), String> {
-        let mut x = x0;
-        let y = y0;
+    pub fn render_text(&self, text: &str, x0: i32, y0: i32, scale: f32, color: Color) -> Result<(), String> {
+        // We convert the (0..x) and (0..y) coordinates to (-width..width) and (-height..height)
+        let mut x = convert_ranges(x0 as f32, 0.0, self.win_width as f32, -self.win_width as f32, self.win_width as f32);
+        let y = convert_ranges(y0 as f32, 0.0, self.win_height as f32, -self.win_height as f32, self.win_height as f32);
         self.program.use_program();
         let color_uniform = Uniform::new(&self.program, "textColor")?;
         color_uniform.uniform3f(color.0 as f32 / 255.0, color.1 as f32 / 255.0, color.2 as f32 / 255.0);
@@ -693,10 +703,10 @@ impl TextRenderer {
         self.vao.bind();
         for c in text.chars() {
             let ch = self.characters.get(&c).unwrap();
-            let xpos = (x + ch.bearing.0 as f32 * scale) / 1200.0;
-            let ypos = (y - (ch.size.1 as f32 - ch.bearing.1 as f32) * scale) / 900.0;
-            let w = (ch.size.0 as f32 * scale) / 1200.0;
-            let h = (ch.size.1 as f32 * scale) / 900.0;
+            let xpos = (x + ch.bearing.0 as f32 * scale) / self.win_width as f32;
+            let ypos = (y - (ch.size.1 as f32 - ch.bearing.1 as f32) * scale) / self.win_height as f32;
+            let w = (ch.size.0 as f32 * scale) / self.win_width as f32;
+            let h = (ch.size.1 as f32 * scale) / self.win_height as f32;
             let vertices: [f32; 24] = [
                 xpos,     ypos + h,   0.0_f32, 0.0,            
                 xpos,     ypos,       0.0,     1.0,
