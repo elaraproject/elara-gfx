@@ -1,4 +1,4 @@
-use elara_gfx::{gl_info, Shader, Program, VertexArray, Buffer, BufferType, Uniform, WindowHandler, HandlerResult};
+use elara_gfx::{gl_info, WindowHandler, HandlerResult};
 use std::error::Error;
 use elara_gfx::GLWindow;
 use elara_log::prelude::*;
