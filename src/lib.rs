@@ -14,7 +14,7 @@ pub mod types;
 use elara_log::prelude::*;
 use error::*;
 mod image;
-pub use image::PixelArray;
+pub use image::{PixelArray, RGBA};
 pub mod canvas;
 
 // NOTE: elara-gfx uses elara-log internally to log
