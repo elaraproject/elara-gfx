@@ -22,6 +22,20 @@ pub struct RGBA {
     pub a: u8
 }
 
+impl RGBA {
+	pub fn new(r: u8, g: u8, b: u8, a: u8) -> RGBA {
+		RGBA { r, g, b, a }
+	}
+
+	pub fn black() -> RGBA {
+		RGBA { r: 0, g: 0, b: 0, a: 1 }
+	}
+
+	pub fn white() -> RGBA {
+		RGBA { r: 255, g: 255, b: 255, a: 1 }
+	}
+}
+
 impl PixelArray {
     pub fn load_png_from_path<T: AsRef<Path>>(path: T) -> std::io::Result<PixelArray> {
         Self::load_png(File::open(path)?)
@@ -82,9 +96,9 @@ impl PixelArray {
 
     pub fn new(width: usize, height: usize) -> PixelArray {
         PixelArray { 
-            width: width,
-            height: height,
-            data: Vec::new() }
+            width,
+            height,
+            data: vec![RGBA::black(); width * height] }
     }
     
     pub fn len(&self) -> usize {
@@ -118,6 +132,14 @@ impl PixelArray {
         }
         self.data = new_data.data;
     }
+
+	// User-facing function - it is highly recommended to use
+	// set() to change the value of a particular pixel as it
+	// uses the conventional (x, y) order instead of the reversed
+	// (row, column) - that is (y, x) - order used by Index
+    pub fn set(&mut self, x: usize, y: usize, color: RGBA) {
+    	self[[y, x]] = color;
+    }
     
     // TODO: add more methods from https://github.com/ankitaS11/pyImageEdits
     
@@ -132,7 +154,7 @@ impl PixelArray {
         format!("P3\n# Created by elara-gfx\n{} {}\n255\n{}", self.width, self.height, data_str)
     }
 
-    pub fn save_as_ppm(&self, path: PathBuf) -> std::io::Result<()> {
+    pub fn save_as_ppm<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
         let mut output = File::create(path)?;
         write!(output, "{}", self.write_ppm())?;
         Ok(())
@@ -145,7 +167,7 @@ impl Index<[usize; 2]> for PixelArray {
     fn index(&self, index: [usize; 2]) -> &Self::Output {
         let [i, j] = index;
         if i >= self.height || j >= self.width {
-            panic!("Image index [{}, {}] out of bounds, dimensions [{}, {}", i, j, self.height, self.width);
+            panic!("Image index [{}, {}] out of bounds, dimensions [{}, {}]", i, j, self.height, self.width);
         }
         
         &self.data[(self.width * i) + j]
