@@ -1,10 +1,8 @@
 use std::{path::Path, io::Read};
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
 use png;
 use png::ColorType::*;
-use winit::dpi::Pixel;
 use std::ops::{Index, IndexMut};
 
 #[derive(Clone, Debug)]
@@ -36,12 +34,77 @@ impl RGBA {
 	}
 }
 
+#[derive(Debug)]
+pub enum ImageError {
+	JPEGError(jpeg_decoder::Error),
+	IoError(std::io::Error),
+	PNGError(png::DecodingError)
+}
+
+impl std::fmt::Display for ImageError {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		match *self {
+			ImageError::JPEGError(ref desc) => write!(f, "JPEG processing error: {}", desc),
+			ImageError::IoError(ref err) => err.fmt(f)
+		}
+	}
+}
+
+impl std::error::Error for ImageError {
+	fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+		match *self {
+			ImageError::JPEGError(ref err) => Some(err),
+			ImageError::IoError(ref err) => Some(err)
+		}
+	}
+}
+
+impl From<std::io::Error> for ImageError {
+	fn from(err: std::io::Error) -> ImageError {
+		ImageError::IoError(err)
+	}
+}
+
+impl From<jpeg_decoder::Error> for ImageError {
+	fn from(err: jpeg_decoder::Error) -> ImageError {
+		ImageError::JPEGError(err)
+	}
+}
+
+impl From<png::DecodingError> for ImageError {
+	fn from(err: png::DecodingError) -> ImageError {
+		ImageError::PNGError(err)
+	}
+}
+
 impl PixelArray {
-    pub fn load_png_from_path<T: AsRef<Path>>(path: T) -> std::io::Result<PixelArray> {
+    pub fn load_png_from_path<T: AsRef<Path>>(path: T) -> Result<PixelArray, ImageError> {
         Self::load_png(File::open(path)?)
     }
 
-    pub fn load_png<R: Read>(r: R) -> std::io::Result<PixelArray> {
+    pub fn load_jpg_from_path<T: AsRef<Path>>(path: T) -> Result<PixelArray, ImageError> {
+    	Self::load_jpg(File::open(path)?)
+    }
+
+    pub fn load_jpg<R: Read>(r: R) -> Result<PixelArray, ImageError> {
+    	let mut decoder = jpeg_decoder::Decoder::new(r);
+    	let data = decoder.decode()?;
+    	let metadata = decoder.info().unwrap();
+
+    	let mut pixels = Vec::new();
+        for i in (0..data.len()).step_by(3) {
+            let pixel = RGBA { r: data[i], g: data[i + 1], b: data[i + 2], a: 1 };
+            pixels.push(pixel);
+        }
+
+        Ok(PixelArray {
+        	width: metadata.width as usize,
+        	height: metadata.height as usize,
+        	data: pixels
+        })
+    }
+
+    pub fn load_png<R: Read>(r: R) -> Result<PixelArray, ImageError> {
         let mut decoder = png::Decoder::new(r);
         decoder.set_transformations(png::Transformations::normalize_to_color8());
         let mut reader = decoder.read_info()?;
