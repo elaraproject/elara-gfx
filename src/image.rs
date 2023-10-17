@@ -44,7 +44,8 @@ pub enum ImageError {
 impl std::fmt::Display for ImageError {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 		match *self {
-			ImageError::JPEGError(ref desc) => write!(f, "JPEG processing error: {}", desc),
+			ImageError::JPEGError(ref err) => err.fmt(f),
+			ImageError::PNGError(ref err) => err.fmt(f),
 			ImageError::IoError(ref err) => err.fmt(f)
 		}
 	}
@@ -54,6 +55,7 @@ impl std::error::Error for ImageError {
 	fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
 		match *self {
 			ImageError::JPEGError(ref err) => Some(err),
+			ImageError::PNGError(ref err) => Some(err),
 			ImageError::IoError(ref err) => Some(err)
 		}
 	}
