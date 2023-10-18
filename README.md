@@ -6,6 +6,18 @@ A GPU programming library for Project Elara, focused on functionality and speed.
 
 **Shoutouts:** See [Acknowledgements](./ACKNOWLEDGEMENTS.md)
 
+## Demos
+
+These demos use a variety of fragment shaders from Shadertoy as well as custom-created shaders, and all use only the library's functionality. Note that by default the library renders to `.ppm` images, these can be converted to PNGs with ImageMagick.
+
+![Black hole](samples/black_hole_render.png)
+![Glowing circle](samples/circle.png)
+![Gradient](samples/gradient.png)
+![Grid](samples/grid.png)
+![Orbits](samples/orbits.png)
+![UI rendering](samples/ui-render.png)
+
+
 ## Install
 
 Make sure to clone the repository and grab submodules:
