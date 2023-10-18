@@ -1,16 +1,14 @@
+#version 330
+
 /*
  * Original shader taken from: https://glslsandbox.com/e#92507.0
  * Not my own work, full credits to the author of the shader,
  * used here just for demonstrative purposes
  */
 
-
-#ifdef GL_ES
-precision highp float;
-#endif
-
 uniform float u_time;
 uniform vec2 u_resolution;
+out vec4 fragColor;
 
 // --------[ Original ShaderToy begins here ]---------- //
 // SST Squelcher
@@ -97,6 +95,6 @@ void main(void)
 	tot += col;
     
 	    
-	gl_FragColor = vec4( tot, 1.0 );
+	fragColor = vec4( tot, 1.0 );
 
 }

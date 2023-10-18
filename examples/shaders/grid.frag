@@ -1,11 +1,8 @@
 // Taken from https://stackoverflow.com/questions/63408121/opengl-simple-antialiased-polygon-grid-shader
 #version 330
 
-#ifdef GL_ES
-precision mediump float;
-#endif
-
 uniform vec2 u_resolution;
+out vec4 fragColor;
 
 void main() {
     vec2 uv = gl_FragCoord.xy / u_resolution.xy * vec2(u_resolution.x / u_resolution.y, 1.0);
@@ -26,6 +23,6 @@ void main() {
     );
 
     // Output to screen (for shadertoy only)
-    gl_FragColor = vec4(grid, grid, grid, 1.0);
+    fragColor = vec4(grid, grid, grid, 1.0);
 }
 
