@@ -87,7 +87,26 @@ pub trait WindowHandler {
     fn on_draw(&mut self) -> HandlerResult<()> {
         Ok(())
     }
+
+    fn post_draw(&mut self) -> HandlerResult<()> {
+    	Ok(())
+    }
     fn on_resize(&mut self) {}
+
+    fn save_rendering(&self, width: i32, height: i32) -> Option<PixelArray> {
+    	// source: https://lencerf.github.io/post/2019-09-21-save-the-opengl-rendering-to-image-file/
+        let n_channels = 4;
+        let mut stride = n_channels * width;
+        stride += if stride % 4 != 0 { 4 - stride % 4 } else { 0 };
+        let buffer_size = stride * height;
+        let buffer = vec![0; buffer_size as usize];
+        unsafe {
+	        gl::PixelStorei(gl::PACK_ALIGNMENT, 4);
+	        gl::ReadBuffer(gl::FRONT);
+	        gl::ReadPixels(0, 0, width, height, gl::RGBA, gl::UNSIGNED_BYTE, buffer.as_ptr() as *mut u8 as *mut types::c_void);
+        }
+        PixelArray::from_bytearray(buffer, width as usize, height as usize)
+    }
     // TODO: add other methods such as on_mouse_move(), on_keydown(),
     // on_click(), on_cursor_move() for handling on non-draw events
 }
@@ -130,6 +149,7 @@ impl GLWindowHandler {
                     window.make_current();
                     handler.on_draw().unwrap();
                     window.swap_buffers();
+                    handler.post_draw().unwrap();
                     window.make_not_current();
                 }
                 _ => {}
