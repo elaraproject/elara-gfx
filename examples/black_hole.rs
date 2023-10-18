@@ -82,6 +82,14 @@ impl WindowHandler for Handler {
         }
         Ok(())
     }
+
+    fn post_draw(&mut self) -> Result<(), String> {
+    	unsafe {
+    		let img = self.save_rendering().unwrap();
+            img.save_as_ppm("black_hole_render.ppm");
+    	}
+    	Ok(())
+    }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {

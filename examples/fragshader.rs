@@ -112,6 +112,14 @@ impl WindowHandler for Handler {
         show_render_stats(500, current_frame, frame_render_time);
         Ok(())
     }
+
+    fn post_draw(&mut self) -> Result<(), String> {
+    	unsafe {
+    		let img = self.save_rendering(self.resolution.0 as i32, self.resolution.1 as i32).unwrap();
+            img.save_as_ppm("render.ppm").unwrap();
+    	}
+    	Ok(())
+    }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {

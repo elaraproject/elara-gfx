@@ -6,6 +6,7 @@ use std::error::Error;
 use std::time::Instant;
 
 struct Handler {
+	resolution: (i32, i32),
     text_renderer: TextRenderer,
     rect_renderer: RectRenderer,
     line_renderer: LineRenderer
@@ -13,11 +14,12 @@ struct Handler {
 
 impl Handler {
     fn new(win: &GLWindow) -> Result<Handler, String> {
+    	let resolution = (win.width() as i32, win.height() as i32);
         let mut text_renderer = TextRenderer::new(win)?;
         text_renderer.load("resources/OpenSans-Regular.ttf", 40);
         let rect_renderer = RectRenderer::new()?;
         let line_renderer = LineRenderer::new()?;
-        Ok(Handler{ text_renderer, rect_renderer, line_renderer })
+        Ok(Handler{ resolution, text_renderer, rect_renderer, line_renderer })
     }
 }
 
@@ -93,6 +95,12 @@ impl WindowHandler for Handler {
         info!("Render time is {:?}", now.elapsed());
         Ok(())
     }
+
+    fn post_draw(&mut self) -> Result<(), String> {
+   		let img = self.save_rendering(self.resolution.0 as i32, self.resolution.1 as i32).unwrap();
+        img.save_as_ppm("ui-render.ppm").unwrap();
+   		Ok(())
+   }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
