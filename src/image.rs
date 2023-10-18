@@ -159,6 +159,19 @@ impl PixelArray {
         })
     }
 
+    pub fn from_bytearray(data: Vec<u8>, width: usize, height: usize) -> Option<PixelArray> {
+    	let mut pixels = Vec::new();
+    	for i in (0..data.len()).step_by(4) {
+            let pixel = RGBA { r: data[i], g: data[i + 1], b: data[i + 2], a: data[i + 3] };
+            pixels.push(pixel);
+        }
+       	Some(PixelArray {
+            width,
+            height,
+            data: pixels
+        })
+    }
+
     pub fn new(width: usize, height: usize) -> PixelArray {
         PixelArray { 
             width,
