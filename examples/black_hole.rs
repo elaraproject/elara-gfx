@@ -85,7 +85,7 @@ impl WindowHandler for Handler {
 
     fn post_draw(&mut self) -> Result<(), String> {
     	unsafe {
-    		let img = self.save_rendering().unwrap();
+    		let img = self.save_rendering(self.resolution.0 as i32, self.resolution.1 as i32).unwrap();
             img.save_as_ppm("black_hole_render.ppm");
     	}
     	Ok(())
