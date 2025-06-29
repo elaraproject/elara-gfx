@@ -5,3 +5,4 @@ build_logs.txt
 refs
 deny.toml
 .DS_Store
+*.ppm
