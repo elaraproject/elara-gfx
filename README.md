@@ -1,5 +1,9 @@
 # Elara GFX
 
+> :warning: **IMPORTANT:** Project Elara has switched over to the open-source forge [Codeberg](https://codeberg.org/). The Project Elara repositories have been moved to [this Codeberg page](https://codeberg.org/elaraproject/). **This GitHub repository is no longer maintained**.
+
+---
+
 A GPU programming library for Project Elara, focused on functionality and speed, with support for:
 
 - A medium-high-level OpenGL wrapper covering essential OpenGL functionality while writing less code
